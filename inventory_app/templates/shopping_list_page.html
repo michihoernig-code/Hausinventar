@@ -1,0 +1,494 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero no-print">
+    <div>
+        <p class="eyebrow">Einkaufsliste</p>
+        <h1>Fehlmengen ruhig filtern und direkt weitergeben.</h1>
+        <p class="lead">Filter, Versand und die eigentliche Liste sind getrennt, damit die Seite trotz vieler Optionen
+            schnell lesbar bleibt.</p>
+    </div>
+    <div class="detail-actions">
+        <button type="button" class="secondary" id="shopping-builder-open">Erstellungsmodus starten</button>
+        <button type="button" onclick="window.print()">Drucken</button>
+        <button type="button" class="secondary" id="shopping-mail-button">Mail-App</button>
+    </div>
+</section>
+
+<section class="stats-grid compact shopping-stats">
+    <article class="stat-card">
+        <span>Produkte</span>
+        <strong>{{ item_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Fehlt gesamt</span>
+        <strong>{{ total_missing_units }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>Listenmodus</span>
+        <strong>{{ 'Minimum' if list_mode == 'min' else 'Voll' }}</strong>
+    </article>
+</section>
+
+<section class="panel category-overview-panel no-print">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Alle Funktionen sind gebuendelt: zuerst Filter und Versand, darunter die eigentliche
+                Einkaufsliste.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#shopping-filters">
+            <strong>Filter und Versand</strong>
+            <span>Modus, Kategorie und Versandziel gemeinsam steuern.</span>
+            <small>{% if selected_category %}{{ selected_category }}{% else %}Alle Kategorien{% endif %}</small>
+        </a>
+        <a class="hub-card" href="#shopping-items">
+            <strong>Fehlende Produkte</strong>
+            <span>Die eigentliche Liste bleibt separat und damit viel ruhiger lesbar.</span>
+            <small>{{ item_count }} Eintraege</small>
+        </a>
+        <a class="hub-card" href="{{ url_for('products_page') }}">
+            <strong>Zur Produktverwaltung</strong>
+            <span>Bestand oder Stammdaten bei Bedarf direkt anpassen.</span>
+            <small>Folgeschritt</small>
+        </a>
+    </div>
+</section>
+
+<details class="panel category-accordion no-print" id="shopping-filters" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Schnellzugriff</p>
+            <h2>Filter und Versand</h2>
+            <p class="subtle">Die Steuerung sitzt in einem eigenen Untermenue und ueberflutet die Liste nicht mehr
+                permanent.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ 'Minimum' if list_mode == 'min' else 'Vollbestand' }}</span>
+            <span class="status-pill">{{ item_count }} Produkte</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="category-subpanel">
+            <form class="search-form shopping-filter-form" id="shopping-filter-form" method="get">
+                <div>
+                    <label for="mode">Modus</label>
+                    <select id="mode" name="mode">
+                        <option value="min" {% if list_mode=='min' %}selected{% endif %}>Mindestbestand</option>
+                        <option value="target" {% if list_mode=='target' %}selected{% endif %}>Vollbestand</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category">Kategorie</label>
+                    <select id="category" name="category">
+                        <option value="">Alle Einkaufskategorien</option>
+                        {% for category_option in category_suggestions %}
+                        <option value="{{ category_option }}" {% if selected_category==category_option %}selected{%
+                            endif %}>{{ category_option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="email">Mail</label>
+                    <input id="email" name="email" type="email" placeholder="optional" value="{{ email_recipient }}">
+                </div>
+                <button type="submit">Aktualisieren</button>
+            </form>
+            <div class="form-actions">
+                <button type="submit" form="shopping-filter-form" formaction="{{ url_for('send_shopping_list') }}"
+                    formmethod="post">Direkt senden</button>
+                <button type="button" class="button-link secondary" id="shopping-copy-button">Text kopieren</button>
+            </div>
+            <p class="subtle">Direkt senden nutzt den in der Anwendung konfigurierten SMTP-Server.</p>
+            <div class="chip-row compact-chips">
+                <a class="filter-chip {% if not selected_category %}active{% endif %}"
+                    href="{{ url_for('shopping_list', mode=list_mode, email=email_recipient) }}">Alle</a>
+                {% for category_option in category_suggestions %}
+                <a class="filter-chip {% if selected_category == category_option %}active{% endif %}"
+                    href="{{ url_for('shopping_list', mode=list_mode, category=category_option, email=email_recipient) }}">{{
+                    category_option }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion shopping-list-card" id="shopping-items" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Liste</p>
+            <h2>Fehlende Produkte</h2>
+            <p class="subtle">Die eigentliche Einkaufsliste bleibt als eigener Bereich konzentriert und gut scanbar.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill warning-pill">{{ total_missing_units }} fehlt gesamt</span>
+            {% if selected_category %}
+            <span class="status-pill">{{ selected_category }}</span>
+            {% endif %}
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="filter-summary-row no-print">
+            <div class="category-summary">
+                <strong>Aktiver Umfang</strong>
+                <p>{% if selected_category %}Die Liste zeigt nur Produkte aus {{ selected_category }}.{% else %}Die
+                    Liste zeigt aktuell alle Einkaufskategorien.{% endif %}</p>
+            </div>
+            <div class="category-summary">
+                <strong>Modus</strong>
+                <p>{% if list_mode == 'min' %}Es werden nur Fehlmengen bis zum Mindestbestand berechnet.{% else %}Es
+                    werden Fehlmengen bis zum Soll-Bestand berechnet.{% endif %}</p>
+            </div>
+            {% if selected_category_includes %}
+            <div class="category-summary">
+                <strong>Automatisch mit dabei</strong>
+                <p>{{ selected_category_includes|join(', ') }}</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produkt</th>
+                        <th>Lebensmittelart</th>
+                        <th>Einkaufsliste</th>
+                        <th>Bestand</th>
+                        <th>Fehlt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.name }}</strong>
+                            <div class="subtle">{{ item.storage_location or 'Kein Lagerort' }}</div>
+                        </td>
+                        <td>{{ item.product_category or 'Ohne Lebensmittelart' }}</td>
+                        <td>{{ item.shopping_category_label or '-' }}</td>
+                        <td>{{ item.current_quantity }} {{ item.unit }}</td>
+                        <td class="text-warning">{{ item.shopping_quantity }} {{ item.unit }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">Keine fehlenden Produkte in diesem Filter.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<div class="expiry-modal" id="shopping-builder-modal" hidden>
+    <div class="expiry-modal-backdrop" data-close-shopping-builder></div>
+    <div class="expiry-modal-card shopping-builder-card" role="dialog" aria-modal="true"
+        aria-labelledby="shopping-builder-title">
+        <p class="eyebrow">Erstellungsmodus</p>
+        <h2 id="shopping-builder-title">Einkaufsliste Schritt fuer Schritt erstellen</h2>
+        <p class="subtle">Waehle nacheinander Modus, Kategorie und optional die Mailadresse. Am Ende wird direkt die
+            passende Liste angezeigt.</p>
+
+        <div class="shopping-builder-progress" aria-hidden="true">
+            <div class="shopping-builder-progress-item" data-builder-progress="1">
+                <span>1</span>
+                <strong>Modus</strong>
+                <small>Mindestbestand oder Vollbestand</small>
+            </div>
+            <div class="shopping-builder-progress-item" data-builder-progress="2">
+                <span>2</span>
+                <strong>Kategorie</strong>
+                <small>Alle oder gezielt einschraenken</small>
+            </div>
+            <div class="shopping-builder-progress-item" data-builder-progress="3">
+                <span>3</span>
+                <strong>Abschluss</strong>
+                <small>Mail optional mitgeben</small>
+            </div>
+        </div>
+
+        <form id="shopping-builder-form" method="get" action="{{ url_for('shopping_list') }}">
+            <input type="hidden" name="mode" value="{{ list_mode }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="email" value="{{ email_recipient }}">
+
+            <section class="shopping-builder-step" data-builder-step="1">
+                <strong>Welcher Listenmodus soll erstellt werden?</strong>
+                <div class="shopping-builder-choice-grid">
+                    <button type="button" class="shopping-builder-choice" data-builder-mode="min">
+                        <span>Mindestbestand</span>
+                        <small>Zeigt nur die Menge, die bis zum Mindestbestand fehlt.</small>
+                    </button>
+                    <button type="button" class="shopping-builder-choice" data-builder-mode="target">
+                        <span>Vollbestand</span>
+                        <small>Berechnet die gesamte Auffuellmenge bis zum Soll-Bestand.</small>
+                    </button>
+                </div>
+            </section>
+
+            <section class="shopping-builder-step" data-builder-step="2" hidden>
+                <strong>Welche Einkaufskategorie soll enthalten sein?</strong>
+                <div>
+                    <label for="shopping-builder-category">Kategorie</label>
+                    <select id="shopping-builder-category">
+                        <option value="">Alle Einkaufskategorien</option>
+                        {% for category_option in category_suggestions %}
+                        <option value="{{ category_option }}" {% if selected_category==category_option %}selected{%
+                            endif %}>
+                            {{ category_option }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="subtle">Leer bedeutet: Die fertige Liste umfasst alle Einkaufskategorien.</p>
+            </section>
+
+            <section class="shopping-builder-step" data-builder-step="3" hidden>
+                <strong>Optional: Soll eine Mailadresse direkt mit vorbereitet werden?</strong>
+                <div>
+                    <label for="shopping-builder-email">Mailadresse</label>
+                    <input id="shopping-builder-email" type="email" placeholder="optional"
+                        value="{{ email_recipient }}">
+                </div>
+                <p class="subtle">Nach dem Erstellen kannst du die fertige Liste direkt drucken, kopieren oder ueber
+                    die Mail-App weitergeben.</p>
+            </section>
+
+            <div class="filter-summary-row shopping-builder-preview-grid">
+                <div class="category-summary">
+                    <strong>Modus</strong>
+                    <p data-builder-preview-mode></p>
+                </div>
+                <div class="category-summary">
+                    <strong>Kategorie</strong>
+                    <p data-builder-preview-category></p>
+                </div>
+                <div class="category-summary">
+                    <strong>Mail</strong>
+                    <p data-builder-preview-email></p>
+                </div>
+            </div>
+
+            <div class="shopping-builder-footer">
+                <div class="form-actions">
+                    <button type="button" class="secondary" data-close-shopping-builder>Abbrechen</button>
+                    <button type="button" class="secondary" data-builder-back hidden>Zurueck</button>
+                </div>
+                <div class="form-actions">
+                    <button type="button" data-builder-next>Weiter</button>
+                    <button type="submit" data-builder-submit hidden>Liste erstellen</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const mailButton = document.getElementById("shopping-mail-button");
+        const copyButton = document.getElementById("shopping-copy-button");
+        const builderButton = document.getElementById("shopping-builder-open");
+        const builderModal = document.getElementById("shopping-builder-modal");
+        const builderForm = document.getElementById("shopping-builder-form");
+        const builderCategory = document.getElementById("shopping-builder-category");
+        const builderEmail = document.getElementById("shopping-builder-email");
+        const recipient = {{ email_recipient| tojson
+    }};
+    const subject = {{ mail_subject| tojson }};
+    const body = {{ mail_body| tojson }};
+    const initialMode = {{ list_mode| tojson }};
+    const initialCategory = {{ selected_category| tojson }};
+    const initialEmail = {{ email_recipient| tojson }};
+
+    const builderModeInput = builderForm?.querySelector('[name="mode"]');
+    const builderCategoryInput = builderForm?.querySelector('[name="category"]');
+    const builderEmailInput = builderForm?.querySelector('[name="email"]');
+    const builderSteps = builderModal?.querySelectorAll("[data-builder-step]") || [];
+    const builderProgressItems = builderModal?.querySelectorAll("[data-builder-progress]") || [];
+    const builderModeButtons = builderModal?.querySelectorAll("[data-builder-mode]") || [];
+    const builderCloseButtons = builderModal?.querySelectorAll("[data-close-shopping-builder]") || [];
+    const builderBackButton = builderModal?.querySelector("[data-builder-back]");
+    const builderNextButton = builderModal?.querySelector("[data-builder-next]");
+    const builderSubmitButton = builderModal?.querySelector("[data-builder-submit]");
+    const builderPreviewMode = builderModal?.querySelector("[data-builder-preview-mode]");
+    const builderPreviewCategory = builderModal?.querySelector("[data-builder-preview-category]");
+    const builderPreviewEmail = builderModal?.querySelector("[data-builder-preview-email]");
+
+    const builderState = {
+        step: 1,
+        mode: initialMode === "target" ? "target" : "min",
+        category: initialCategory || "",
+        email: initialEmail || "",
+    };
+
+    async function copyShoppingText() {
+        try {
+            await navigator.clipboard.writeText(body);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function openMailClient() {
+        const normalizedBody = body.replace(/\n/g, "\r\n");
+        const params = new URLSearchParams({ subject, body: normalizedBody });
+        const target = recipient ? `mailto:${recipient}` : "mailto:";
+        let mailtoUrl = `${target}?${params.toString().replace(/\+/g, "%20")}`;
+
+        if (mailtoUrl.length > 1800) {
+            copyShoppingText();
+            const fallbackParams = new URLSearchParams({
+                subject,
+                body: "Die Einkaufsliste wurde in die Zwischenablage kopiert.",
+            });
+            mailtoUrl = `${target}?${fallbackParams.toString().replace(/\+/g, "%20")}`;
+        }
+
+        window.location.href = mailtoUrl;
+    }
+
+    function getModeLabel(mode) {
+        return mode === "target" ? "Vollbestand" : "Mindestbestand";
+    }
+
+    function syncBuilderInputs() {
+        if (builderModeInput) {
+            builderModeInput.value = builderState.mode;
+        }
+        if (builderCategoryInput) {
+            builderCategoryInput.value = builderState.category;
+        }
+        if (builderEmailInput) {
+            builderEmailInput.value = builderState.email;
+        }
+    }
+
+    function syncBuilderPreview() {
+        if (builderPreviewMode) {
+            builderPreviewMode.textContent = getModeLabel(builderState.mode);
+        }
+        if (builderPreviewCategory) {
+            builderPreviewCategory.textContent = builderState.category || "Alle Einkaufskategorien";
+        }
+        if (builderPreviewEmail) {
+            builderPreviewEmail.textContent = builderState.email || "Keine Mailadresse vorbelegt";
+        }
+    }
+
+    function renderBuilder() {
+        builderSteps.forEach((stepPanel) => {
+            stepPanel.hidden = Number(stepPanel.dataset.builderStep) !== builderState.step;
+        });
+
+        builderProgressItems.forEach((item) => {
+            const itemStep = Number(item.dataset.builderProgress);
+            item.classList.toggle("is-active", itemStep === builderState.step);
+            item.classList.toggle("is-complete", itemStep < builderState.step);
+        });
+
+        builderModeButtons.forEach((button) => {
+            button.classList.toggle("is-active", button.dataset.builderMode === builderState.mode);
+        });
+
+        if (builderCategory) {
+            builderCategory.value = builderState.category;
+        }
+        if (builderEmail) {
+            builderEmail.value = builderState.email;
+        }
+
+        if (builderBackButton) {
+            builderBackButton.hidden = builderState.step === 1;
+        }
+        if (builderNextButton) {
+            builderNextButton.hidden = builderState.step === 3;
+        }
+        if (builderSubmitButton) {
+            builderSubmitButton.hidden = builderState.step !== 3;
+        }
+
+        syncBuilderInputs();
+        syncBuilderPreview();
+    }
+
+    function openBuilder() {
+        if (!builderModal) {
+            return;
+        }
+        builderState.step = 1;
+        renderBuilder();
+        builderModal.hidden = false;
+    }
+
+    function closeBuilder() {
+        if (!builderModal) {
+            return;
+        }
+        builderModal.hidden = true;
+    }
+
+    mailButton?.addEventListener("click", openMailClient);
+    copyButton?.addEventListener("click", copyShoppingText);
+    builderButton?.addEventListener("click", openBuilder);
+
+    builderCloseButtons.forEach((button) => {
+        button.addEventListener("click", closeBuilder);
+    });
+
+    builderModeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            builderState.mode = button.dataset.builderMode === "target" ? "target" : "min";
+            renderBuilder();
+        });
+    });
+
+    builderCategory?.addEventListener("change", (event) => {
+        builderState.category = event.target.value;
+        renderBuilder();
+    });
+
+    builderEmail?.addEventListener("input", (event) => {
+        builderState.email = event.target.value.trim();
+        syncBuilderInputs();
+        syncBuilderPreview();
+    });
+
+    builderBackButton?.addEventListener("click", () => {
+        builderState.step = Math.max(1, builderState.step - 1);
+        renderBuilder();
+    });
+
+    builderNextButton?.addEventListener("click", () => {
+        builderState.step = Math.min(3, builderState.step + 1);
+        renderBuilder();
+    });
+
+    builderForm?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        syncBuilderInputs();
+
+        const params = new URLSearchParams();
+        params.set("mode", builderState.mode);
+        if (builderState.category) {
+            params.set("category", builderState.category);
+        }
+        if (builderState.email) {
+            params.set("email", builderState.email);
+        }
+
+        window.location.assign(`${builderForm.action}?${params.toString()}#shopping-items`);
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && builderModal && !builderModal.hidden) {
+            closeBuilder();
+        }
+    });
+
+    renderBuilder();
+    }) ();
+</script>
+{% endblock %}

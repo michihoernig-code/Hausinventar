@@ -1,0 +1,233 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Eigene Seite fuer den Barcode-Workflow mit Direktbuchung. -->
+<section class="scanner-hero">
+    <div>
+        <p class="eyebrow">Barcode erfassen</p>
+        <h1>Barcode scannen und Produkt direkt buchen.</h1>
+        <p class="lead">Die meisten USB-Barcodescanner arbeiten wie eine Tastatur. Fokus in das Feld setzen, Barcode
+            scannen, Enter senden. Unbekannte Barcodes springen direkt in die Produktanlage mit Vorbefuellung.</p>
+    </div>
+    <form class="scanner-form" method="post">
+        <label for="barcode">Barcode</label>
+        <input id="barcode" name="barcode" value="{{ barcode }}" autofocus>
+        <button type="submit">Produkt suchen</button>
+    </form>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Scannen, pruefen und direkt buchen sind klar voneinander getrennt, damit die Seite nicht
+                ueberladen wirkt.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#barcode-search">
+            <strong>Barcode suchen</strong>
+            <span>Produkt ueber Scanner oder Tastatur aufrufen.</span>
+            <small>Soforteingabe</small>
+        </a>
+        {% if product %}
+        <a class="hub-card" href="#barcode-booking">
+            <strong>Direkt buchen</strong>
+            <span>Nach dem Treffer direkt Ein- oder Auslagerung ausfuehren.</span>
+            <small>{{ product.name }}</small>
+        </a>
+        <a class="hub-card" href="{{ url_for('product_detail', product_id=product.id) }}#product-expiry">
+            <strong>Haltbarkeitsdatum</strong>
+            <span>MHD-Status und offene Chargen des gefundenen Produkts ansehen.</span>
+            <small>{{ product.expiry_status_label if product.requires_expiry_date else 'Nicht aktiv' }}</small>
+        </a>
+        {% endif %}
+    </div>
+</section>
+
+{% if product %}
+<details class="panel category-accordion scanner-result" id="barcode-booking" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Treffer</p>
+            <h2>{{ product.name }}</h2>
+            <p class="subtle">Bestand: {{ product.current_quantity }} {{ product.unit }} | Soll: {{
+                product.target_quantity }} {{ product.unit }}</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">Barcode gefunden</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="form-actions">
+            <a class="button-link secondary"
+                href="{{ url_for('product_detail', product_id=product.id) }}">Detailansicht</a>
+        </div>
+        <form class="movement-form inline" method="post" action="{{ url_for('move_product', product_id=product.id) }}"
+            data-expiry-required="{{ 1 if product.requires_expiry_date else 0 }}">
+            <label>
+                Richtung
+                <select name="direction">
+                    <option value="out">Auslagern</option>
+                    <option value="in">Einlagern</option>
+                </select>
+            </label>
+            <label>
+                Menge
+                <input name="quantity" type="number" min="1" value="1" required>
+            </label>
+            <input type="hidden" name="reference" value="Barcode-Scan">
+            <input type="hidden" name="note" value="Gebucht ueber Barcode-Oberflaeche">
+            <input type="hidden" name="expiry_date" value="">
+            <button type="submit">Direkt buchen</button>
+        </form>
+    </div>
+</details>
+
+<div class="expiry-modal" id="expiry-modal" hidden>
+    <div class="expiry-modal-backdrop" data-close-expiry-modal></div>
+    <div class="expiry-modal-card" role="dialog" aria-modal="true" aria-labelledby="barcode-expiry-modal-title">
+        <p class="eyebrow">Haltbarkeitsdatum</p>
+        <h2 id="barcode-expiry-modal-title">Datum per 3 Klicks waehlen</h2>
+        <p class="subtle">Erst Jahr, dann Monat, dann Tag. Nach dem dritten Klick wird die Einlagerung gespeichert.</p>
+        <div class="expiry-step-grid">
+            <section>
+                <strong>1. Jahr</strong>
+                <div class="expiry-option-grid" data-expiry-years></div>
+            </section>
+            <section>
+                <strong>2. Monat</strong>
+                <div class="expiry-option-grid" data-expiry-months></div>
+            </section>
+            <section>
+                <strong>3. Tag</strong>
+                <div class="expiry-option-grid" data-expiry-days></div>
+            </section>
+        </div>
+        <p class="category-summary expiry-selection-preview" data-expiry-selection-preview>Noch kein Datum gewaehlt.</p>
+        <div class="form-actions">
+            <button type="button" class="secondary" data-close-expiry-modal>Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const movementForm = document.querySelector(".movement-form[data-expiry-required]");
+        const expiryModal = document.getElementById("expiry-modal");
+        const yearsHost = expiryModal?.querySelector("[data-expiry-years]");
+        const monthsHost = expiryModal?.querySelector("[data-expiry-months]");
+        const daysHost = expiryModal?.querySelector("[data-expiry-days]");
+        const preview = expiryModal?.querySelector("[data-expiry-selection-preview]");
+        const closeButtons = expiryModal?.querySelectorAll("[data-close-expiry-modal]") || [];
+
+        if (!movementForm || !expiryModal || !yearsHost || !monthsHost || !daysHost || !preview) {
+            return;
+        }
+
+        const availableYears = Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 1 + index);
+        let selectedYear = "";
+        let selectedMonth = "";
+
+        const renderOptions = (host, values, selectedValue, formatter, onClick) => {
+            host.innerHTML = "";
+            values.forEach((value) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `expiry-option-button${selectedValue === value ? " is-active" : ""}`;
+                button.textContent = formatter(value);
+                button.addEventListener("click", () => onClick(value));
+                host.appendChild(button);
+            });
+        };
+
+        const updatePreview = (day = "") => {
+            preview.textContent = selectedYear && selectedMonth && day
+                ? `Ausgewaehlt: ${String(day).padStart(2, "0")}.${String(selectedMonth).padStart(2, "0")}.${selectedYear}`
+                : "Noch kein Datum gewaehlt.";
+        };
+
+        const closeModal = () => {
+            expiryModal.hidden = true;
+            selectedYear = "";
+            selectedMonth = "";
+            yearsHost.innerHTML = "";
+            monthsHost.innerHTML = "";
+            daysHost.innerHTML = "";
+            updatePreview();
+        };
+
+        const submitDate = (day) => {
+            const expiryInput = movementForm.querySelector('[name="expiry_date"]');
+            if (!expiryInput) {
+                return;
+            }
+
+            expiryInput.value = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            updatePreview(day);
+            expiryModal.hidden = true;
+            movementForm.submit();
+        };
+
+        const renderDays = () => {
+            if (!selectedYear || !selectedMonth) {
+                daysHost.innerHTML = "";
+                return;
+            }
+
+            const daysInMonth = new Date(Number(selectedYear), Number(selectedMonth), 0).getDate();
+            renderOptions(daysHost, Array.from({ length: daysInMonth }, (_, index) => index + 1), "", (value) => String(value), submitDate);
+        };
+
+        const renderMonths = () => {
+            if (!selectedYear) {
+                monthsHost.innerHTML = "";
+                return;
+            }
+
+            renderOptions(monthsHost, Array.from({ length: 12 }, (_, index) => index + 1), selectedMonth, (value) => String(value).padStart(2, "0"), (value) => {
+                selectedMonth = value;
+                renderMonths();
+                renderDays();
+            });
+        };
+
+        const renderYears = () => {
+            renderOptions(yearsHost, availableYears, selectedYear, (value) => String(value), (value) => {
+                selectedYear = value;
+                selectedMonth = "";
+                renderYears();
+                renderMonths();
+                daysHost.innerHTML = "";
+                updatePreview();
+            });
+        };
+
+        const openModal = () => {
+            selectedYear = "";
+            selectedMonth = "";
+            yearsHost.innerHTML = "";
+            monthsHost.innerHTML = "";
+            daysHost.innerHTML = "";
+            updatePreview();
+            renderYears();
+            expiryModal.hidden = false;
+        };
+
+        closeButtons.forEach((button) => button.addEventListener("click", closeModal));
+
+        movementForm.addEventListener("submit", (event) => {
+            const requiresExpiry = movementForm.dataset.expiryRequired === "1";
+            const direction = movementForm.querySelector('[name="direction"]')?.value;
+            const expiryInput = movementForm.querySelector('[name="expiry_date"]');
+            if (!requiresExpiry || direction !== "in" || expiryInput?.value) {
+                return;
+            }
+
+            event.preventDefault();
+            openModal();
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

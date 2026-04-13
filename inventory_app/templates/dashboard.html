@@ -1,0 +1,135 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero dashboard-hero-compact">
+    <div>
+        <p class="eyebrow">Dashboard</p>
+        <h1>Alles Wichtige auf einen Blick.</h1>
+        <p class="lead">Kompakte Lageruebersicht mit Bestandszahlen, Nachkaufbedarf und auffaelligen Haltbarkeitsdaten.
+        </p>
+    </div>
+</section>
+
+<section class="stats-grid dashboard-stats-grid">
+    <a class="stat-card" href="{{ url_for('products_page') }}">
+        <span>Produkte</span>
+        <strong>{{ product_count }}</strong>
+    </a>
+    <article class="stat-card warning">
+        <span>Unter Mindestbestand</span>
+        <strong>{{ low_stock_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>MHD bald faellig</span>
+        <strong>{{ expiry_soon_count }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>MHD abgelaufen</span>
+        <strong>{{ expiry_expired_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>MHD fehlt</span>
+        <strong>{{ expiry_missing_count }}</strong>
+    </article>
+</section>
+
+<section class="dashboard-overview-grid">
+    <article class="panel dashboard-focus-panel" id="dashboard-low-stock">
+        <div class="section-head compact-head dashboard-panel-head">
+            <div>
+                <h2>Unter Mindestbestand</h2>
+                <p class="subtle">Die wichtigsten Nachkauf-Faelle direkt im Blick.</p>
+            </div>
+            <div class="accordion-meta">
+                <span class="status-pill warning-pill">{{ low_stock_count }} kritisch</span>
+            </div>
+        </div>
+        <div class="table-wrap dashboard-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produkt</th>
+                        <th>Ort</th>
+                        <th>Ist</th>
+                        <th>Min</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in low_stock_products[:6] %}
+                    <tr>
+                        <td>
+                            <strong>{{ product.name }}</strong>
+                            <div class="subtle">{{ product.product_category or 'Ohne Lebensmittelart' }}</div>
+                        </td>
+                        <td>{{ product.storage_location or '-' }}</td>
+                        <td class="text-warning">{{ product.current_quantity }} {{ product.unit }}</td>
+                        <td>{{ product.min_quantity }} {{ product.unit }}</td>
+                        <td><a href="{{ url_for('product_detail', product_id=product.id) }}">Oeffnen</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">Aktuell liegt kein Produkt unter Mindestbestand.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="dashboard-panel-footer">
+            <a class="button-link secondary" href="{{ url_for('shopping_list') }}">Zur Einkaufsliste</a>
+        </div>
+    </article>
+
+    <article class="panel dashboard-focus-panel" id="dashboard-expiry">
+        <div class="section-head compact-head dashboard-panel-head">
+            <div>
+                <h2>Haltbarkeitsstatus</h2>
+                <p class="subtle">Nur auffaellige Produkte und fehlende MHD-Daten.</p>
+            </div>
+            <div class="accordion-meta">
+                <span class="status-pill expiry-soon-pill">{{ expiry_soon_count }} bald</span>
+                <span class="status-pill warning-pill">{{ expiry_expired_count }} abgelaufen</span>
+                <span class="status-pill">{{ expiry_missing_count }} fehlt</span>
+            </div>
+        </div>
+        <div class="table-wrap dashboard-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produkt</th>
+                        <th>Status</th>
+                        <th>Naechstes MHD</th>
+                        <th>Ort</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in expiry_alert_products[:6] %}
+                    <tr>
+                        <td>
+                            <strong>{{ product.name }}</strong>
+                            <div class="subtle">{{ product.product_category or 'Ohne Lebensmittelart' }}</div>
+                        </td>
+                        <td>
+                            <span class="expiry-status-badge expiry-status-{{ product.expiry_status }}">{{
+                                product.expiry_status_label }}</span>
+                        </td>
+                        <td>{{ product.next_expiry_display or '-' }}</td>
+                        <td>{{ product.storage_location or '-' }}</td>
+                        <td><a href="{{ url_for('product_detail', product_id=product.id) }}#product-expiry">Oeffnen</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">Aktuell gibt es keine auffaelligen Haltbarkeitsdaten.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="dashboard-panel-footer">
+            <a class="button-link secondary" href="{{ url_for('expiry_page') }}">Zur MHD-Uebersicht</a>
+        </div>
+    </article>
+</section>
+{% endblock %}

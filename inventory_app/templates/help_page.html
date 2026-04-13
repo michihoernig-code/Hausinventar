@@ -1,0 +1,203 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero help-hero">
+    <div>
+        <p class="eyebrow">Hilfe</p>
+        <h1>Schneller Einstieg ins Hausinventar</h1>
+        <p class="lead">Diese Seite ist fuer Personen gedacht, die das Programm zum ersten Mal nutzen. Sie erklaert die
+            wichtigsten Arbeitsablaeufe ohne Fachsprache.</p>
+    </div>
+    <a class="button-link secondary" href="{{ url_for('quick_scan') }}">Direkt zum Scanner-Alltag</a>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Die Hilfe ist jetzt in wenige Themenbloecke gegliedert. So ist alles auf einen Blick da,
+                ohne wie ein langer Textblock zu wirken.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#help-basics">
+            <strong>Grundidee</strong>
+            <span>Wofuer das System da ist und welche Wege es im Alltag gibt.</span>
+            <small>Erster Einstieg</small>
+        </a>
+        <a class="hub-card" href="#help-pages">
+            <strong>Wichtige Seiten</strong>
+            <span>Die zentralen Bereiche der Anwendung in Kurzform.</span>
+            <small>Navigation</small>
+        </a>
+        <a class="hub-card" href="#help-scanner-flow">
+            <strong>Scanner-Ablauf</strong>
+            <span>Der taegliche Ablauf in wenigen, klaren Schritten.</span>
+            <small>4 Schritte</small>
+        </a>
+        <a class="hub-card" href="#help-troubleshooting">
+            <strong>Tipps und Fehlerhilfe</strong>
+            <span>Die haeufigsten Stolperstellen und was dann hilft.</span>
+            <small>Nachschlagen</small>
+        </a>
+    </div>
+</section>
+
+<details class="panel category-accordion" id="help-basics" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Einstieg</p>
+            <h2>Wofuer ist das Programm da?</h2>
+            <p class="subtle">Die Grundidee und die zwei typischen Arbeitswege sind separat gebuendelt.</p>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <p>Das Hausinventar verwaltet Produkte, ihren aktuellen Bestand und fehlende Mengen fuer die Einkaufsliste. Im
+            Alltag gibt es zwei typische Wege:</p>
+        <div class="help-grid">
+            <article class="help-card">
+                <strong>Mit Scanner arbeiten</strong>
+                <p>Fuer taegliche Entnahmen und Einlagerungen ist der Scanner-Alltag gedacht. Dort reichen meistens
+                    reine Barcode-Scans.</p>
+            </article>
+            <article class="help-card">
+                <strong>Im Browser pflegen</strong>
+                <p>Fuer neue Produkte, Kategorien, Notizen und Korrekturen gibt es die normalen Seiten im Browser.</p>
+            </article>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="help-pages">
+    <summary>
+        <div>
+            <p class="eyebrow">Uebersicht</p>
+            <h2>Die wichtigsten Seiten</h2>
+            <p class="subtle">Die zentralen Bereiche der Anwendung kompakt gesammelt.</p>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="help-grid">
+            <article class="help-card">
+                <strong>Dashboard</strong>
+                <p>Zeigt alle Produkte, den aktuellen Bestand und Artikel mit niedrigem Vorrat.</p>
+            </article>
+            <article class="help-card">
+                <strong>Einkaufsliste</strong>
+                <p>Listet Produkte, die nachgekauft werden sollten. Die Liste kann direkt per Mail versendet werden.</p>
+            </article>
+            <article class="help-card">
+                <strong>Kategorien</strong>
+                <p>Hier werden Lebensmittelarten und Einkaufskategorien gepflegt und miteinander verknuepft.</p>
+            </article>
+            <article class="help-card">
+                <strong>Produkt anlegen</strong>
+                <p>Zum Anlegen neuer Artikel mit Name, Barcode, Mengen, Lagerort und Zusatzinformationen.</p>
+            </article>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="help-scanner-flow">
+    <summary>
+        <div>
+            <p class="eyebrow">Ablauf</p>
+            <h2>Scanner-Alltag in 4 Schritten</h2>
+            <p class="subtle">Der taegliche Barcode-Workflow bleibt als kurze Schrittfolge erhalten.</p>
+        </div>
+    </summary>
+    <div class="category-accordion-body help-stack">
+        <div class="category-subpanel">
+            <ol class="steps-list">
+                <li>Ein einzelner Barcode scannt eine Auslagerung von 1 Einheit.</li>
+                <li>Zwei gleiche Barcodes kurz hintereinander scannen eine Einlagerung von 1 Einheit.</li>
+                <li>Der Bildschirm zeigt direkt an, welcher Artikel ein- oder ausgelagert wurde.</li>
+                <li>Wenn ein Barcode noch unbekannt ist, springt das Programm direkt in die Produktanlage.</li>
+            </ol>
+        </div>
+        <div class="category-subpanel">
+            <div class="section-head compact-head">
+                <h3>Was passiert bei einem unbekannten Barcode?</h3>
+            </div>
+            <div class="help-grid">
+                <article class="help-card">
+                    <strong>Barcode wird uebernommen</strong>
+                    <p>Das Formular fuer neue Produkte wird direkt mit dem gescannten Barcode geoeffnet.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Online-Vorschlaege werden gesucht</strong>
+                    <p>Wenn moeglich, werden Name oder Zusatzinformationen aus Online-Quellen vorbefuellt.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Einlagerung kann automatisch erfolgen</strong>
+                    <p>Wenn der unbekannte Barcode beim Einlagern erkannt wurde, bucht das Programm nach dem Speichern
+                        automatisch +1.</p>
+                </article>
+            </div>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="help-troubleshooting">
+    <summary>
+        <div>
+            <p class="eyebrow">Praxis</p>
+            <h2>Tipps und haeufige Fehler</h2>
+            <p class="subtle">Starttipps und typische Probleme liegen zusammen in einem Nachschlagebereich.</p>
+        </div>
+    </summary>
+    <div class="category-accordion-body help-stack">
+        <div class="category-subpanel">
+            <div class="section-head compact-head">
+                <h3>Praktische Tipps fuer den Start</h3>
+            </div>
+            <ul class="detail-list">
+                <li>Am Anfang zuerst haeufig genutzte Produkte mit Barcode und Sollbestand anlegen.</li>
+                <li>Danach Lebensmittelarten und Einkaufskategorien verbinden, damit die Einkaufsliste sauber gruppiert
+                    ist.</li>
+                <li>Fuer den Raspberry kann der Vollbildmodus im Scanner-Alltag genutzt werden, damit nur die
+                    Scan-Oberflaeche sichtbar bleibt.</li>
+                <li>Wenn Unsicherheit besteht, lieber erst ein Testprodukt anlegen und den Scanablauf einmal komplett
+                    durchspielen.</li>
+            </ul>
+        </div>
+        <div class="category-subpanel">
+            <div class="section-head compact-head">
+                <h3>Haeufige Fehler und Loesungen</h3>
+            </div>
+            <div class="help-grid">
+                <article class="help-card">
+                    <strong>Der Scanner traegt nichts ein</strong>
+                    <p>Pruefen, ob der Cursor wirklich im Barcode-Feld steht. Danach die Scanner-Seite neu oeffnen und
+                        erneut testen.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Ein Produkt wurde nicht gefunden</strong>
+                    <p>Dann ist der Barcode noch nicht im System gespeichert. Das Programm oeffnet in diesem Fall direkt
+                        die Produktanlage.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Die Menge wirkt falsch</strong>
+                    <p>Im Scanner-Alltag gilt: ein Scan lagert aus, zwei gleiche schnelle Scans lagern ein. Bei
+                        Unsicherheit die Produktdetailseite pruefen.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Die Einkaufsliste wirkt unordentlich</strong>
+                    <p>Meist fehlen Verknuepfungen zwischen Lebensmittelarten und Einkaufskategorien. Diese lassen sich
+                        im Bereich Kategorien pflegen.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Online-Vorbefuellung fehlt</strong>
+                    <p>Dann wurden entweder keine passenden Onlinedaten gefunden oder es besteht gerade keine Verbindung
+                        zur externen Quelle. Das Produkt kann trotzdem manuell angelegt werden.</p>
+                </article>
+                <article class="help-card">
+                    <strong>Mailversand funktioniert nicht</strong>
+                    <p>Dann zuerst die SMTP-Daten in der Konfiguration pruefen. Ohne Mailkonfiguration kann weiterhin
+                        der normale Mail-App-Button verwendet werden.</p>
+                </article>
+            </div>
+        </div>
+    </div>
+</details>
+{% endblock %}

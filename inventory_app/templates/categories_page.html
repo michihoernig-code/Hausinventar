@@ -1,0 +1,494 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero categories-hero">
+    <div>
+        <p class="eyebrow">Kategorien</p>
+        <h1>Lebensmittelarten und Einkaufskategorien getrennt verwalten.</h1>
+        <p class="lead">Ordne Produktkategorien wie Nudeln oder Reis den passenden Einkaufslisten wie Basics oder
+            Wocheneinkauf zu.</p>
+    </div>
+</section>
+
+<section class="stats-grid compact">
+    <article class="stat-card">
+        <span>Produktkategorien</span>
+        <strong>{{ product_category_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Einkaufskategorien</span>
+        <strong>{{ shopping_category_count }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>Noch ohne Zuordnung</span>
+        <strong>{{ unlinked_product_categories|length }}</strong>
+    </article>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Alle Funktionen sind in Untermenues gebuendelt. So siehst du die Hauptoptionen sofort und
+                oeffnest nur den Bereich, den du gerade brauchst.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#category-create">
+            <strong>Kategorien anlegen</strong>
+            <span>Neue Lebensmittelarten und Einkaufslisten-Gruppen erfassen.</span>
+            <small>{{ product_category_count + shopping_category_count }} vorhandene Kategorien</small>
+        </a>
+        <a class="hub-card" href="#category-linking">
+            <strong>Zuordnungen pflegen</strong>
+            <span>Einzelne oder mehrere Lebensmittelarten verknuepfen.</span>
+            <small>{{ unlinked_product_categories|length }} offen</small>
+        </a>
+        <a class="hub-card" href="#category-order">
+            <strong>Reihenfolge sortieren</strong>
+            <span>Einkaufskategorien per Drag-and-drop in die gewuenschte Ordnung bringen.</span>
+            <small>{{ shopping_category_count }} Eintraege</small>
+        </a>
+        <a class="hub-card" href="#category-products">
+            <strong>Produktkategorien verwalten</strong>
+            <span>Namen aendern, Verknuepfungen pruefen und Produkte anlegen.</span>
+            <small>{{ product_category_count }} Eintraege</small>
+        </a>
+        <a class="hub-card" href="#category-shopping">
+            <strong>Einkaufskategorien verwalten</strong>
+            <span>Gruppen umbenennen, sortieren und zur Einkaufsliste springen.</span>
+            <small>{{ shopping_category_count }} Eintraege</small>
+        </a>
+    </div>
+</section>
+
+<details class="panel category-accordion" id="category-create" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Schnellstart</p>
+            <h2>Kategorien anlegen</h2>
+            <p class="subtle">Neue Kategorien bleiben im Hintergrund, bis du sie wirklich anlegst. Die Seite selbst
+                bleibt dadurch deutlich kompakter.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">2 Formulare</span>
+            <span class="status-pill">Direkte Zuordnung optional</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="detail-grid categories-layout">
+            <section class="category-subpanel">
+                <div class="section-head compact-head">
+                    <h3>Neue Produktkategorie</h3>
+                </div>
+                <form class="product-form" method="post">
+                    <input type="hidden" name="action" value="create-product-category">
+                    <label>
+                        Lebensmittelart
+                        <input name="product_category_name" placeholder="z.B. Nudeln" required>
+                    </label>
+                    {% if shopping_categories %}
+                    <fieldset class="selection-group">
+                        <legend>Direkt Einkaufskategorien zuordnen</legend>
+                        <div class="checkbox-grid">
+                            {% for category in shopping_categories %}
+                            <label class="check-card">
+                                <input type="checkbox" name="shopping_category_ids" value="{{ category.id }}">
+                                <span>{{ category.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    {% endif %}
+                    <button type="submit">Speichern</button>
+                </form>
+            </section>
+
+            <section class="category-subpanel">
+                <div class="section-head compact-head">
+                    <h3>Neue Einkaufskategorie</h3>
+                </div>
+                <form class="product-form" method="post">
+                    <input type="hidden" name="action" value="create-shopping-category">
+                    <label>
+                        Einkaufslisten-Gruppe
+                        <input name="shopping_category_name" placeholder="z.B. Basics" required>
+                    </label>
+                    {% if product_categories %}
+                    <fieldset class="selection-group">
+                        <legend>Bestehende Lebensmittelarten direkt aufnehmen</legend>
+                        <div class="checkbox-grid">
+                            {% for category in product_categories %}
+                            <label class="check-card">
+                                <input type="checkbox" name="product_category_ids" value="{{ category.id }}">
+                                <span>{{ category.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    {% endif %}
+                    <button type="submit">Speichern</button>
+                </form>
+            </section>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="category-linking">
+    <summary>
+        <div>
+            <p class="eyebrow">Untermenue</p>
+            <h2>Zuordnungen pflegen</h2>
+            <p class="subtle">Einzelne Verknuepfungen fuer schnelle Korrekturen, Mehrfach-Zuordnung fuer groessere
+                Aufraeumarbeiten.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill warning-pill">{{ unlinked_product_categories|length }} offen</span>
+            <span class="status-pill">Einzeln oder gesammelt</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body category-stack">
+        <section class="category-subpanel">
+            <div class="section-head compact-head">
+                <h3>Einzelne Zuordnung</h3>
+            </div>
+            <form class="inline-form" method="post">
+                <input type="hidden" name="action" value="link-categories">
+                <label>
+                    Produktkategorie
+                    <select name="product_category_id" required>
+                        <option value="">Bitte waehlen</option>
+                        {% for category in product_categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Einkaufskategorie
+                    <select name="shopping_category_id" required>
+                        <option value="">Bitte waehlen</option>
+                        {% for category in shopping_categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit">Zuordnen</button>
+            </form>
+            <p class="subtle">Produkte ziehen ihre Einkaufskategorien automatisch aus ihrer Lebensmittelart. Dadurch
+                bleibt das
+                Produktformular schlank und die Einkaufslisten konsistent.</p>
+        </section>
+
+        <section class="category-subpanel">
+            <div class="section-head compact-head">
+                <h3>Mehrfach-Zuordnung</h3>
+            </div>
+            <form class="product-form" method="post">
+                <input type="hidden" name="action" value="bulk-link-categories">
+                <div class="detail-grid categories-layout">
+                    <fieldset class="selection-group">
+                        <legend>Lebensmittelarten auswaehlen</legend>
+                        <div class="checkbox-grid">
+                            {% for category in unlinked_product_categories or product_categories %}
+                            <label class="check-card">
+                                <input type="checkbox" name="product_category_ids" value="{{ category.id }}">
+                                <span>{{ category.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    <fieldset class="selection-group">
+                        <legend>Einkaufskategorien auswaehlen</legend>
+                        <div class="checkbox-grid">
+                            {% for category in shopping_categories %}
+                            <label class="check-card">
+                                <input type="checkbox" name="shopping_category_ids" value="{{ category.id }}">
+                                <span>{{ category.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Ausgewaehlte Kategorien verknuepfen</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="category-order">
+    <summary>
+        <div>
+            <p class="eyebrow">Untermenue</p>
+            <h2>Einkaufskategorien sortieren</h2>
+            <p class="subtle">Nur bei Bedarf oeffnen. Die Reihenfolge wirkt sich direkt auf Filter und Einkaufsliste
+                aus.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">Drag-and-drop</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <form method="post" id="shopping-category-order-form">
+            <input type="hidden" name="action" value="reorder-shopping-categories">
+            <div class="sortable-list" id="shopping-category-sortable">
+                {% for category in shopping_categories %}
+                <div class="sortable-item" draggable="true" data-category-id="{{ category.id }}">
+                    <input type="hidden" name="shopping_category_ids" value="{{ category.id }}">
+                    <span class="drag-handle" aria-hidden="true">::</span>
+                    <div>
+                        <strong>{{ category.name }}</strong>
+                        <div class="subtle">Position {{ loop.index }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="subtle">Per Ziehen sortieren. Die Reihenfolge wird in Filtern und Einkaufslisten uebernommen.</p>
+            <div class="form-actions">
+                <button type="submit">Reihenfolge speichern</button>
+            </div>
+        </form>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="category-products">
+    <summary>
+        <div>
+            <p class="eyebrow">Verwaltung</p>
+            <h2>Produktkategorien verwalten</h2>
+            <p class="subtle">Namen, Verknuepfungen und direkte Folgeaktionen kompakt an einem Ort.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ product_category_count }} Eintraege</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Lebensmittelart</th>
+                        <th>Produkte</th>
+                        <th>Einkaufslisten</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in product_categories %}
+                    <tr>
+                        <td>
+                            <form method="post" class="inline-edit-form">
+                                <input type="hidden" name="action" value="update-product-category">
+                                <input type="hidden" name="product_category_id" value="{{ category.id }}">
+                                <input name="product_category_name" value="{{ category.name }}"
+                                    aria-label="Produktkategorie umbenennen">
+                                <button type="submit" class="secondary">Umbenennen</button>
+                            </form>
+                        </td>
+                        <td>{{ category.product_count }}</td>
+                        <td>
+                            {% if category.shopping_categories %}
+                            <div class="tag-row">
+                                {% for shopping_category in category.shopping_category_links %}
+                                <form method="post" class="tag-form">
+                                    <input type="hidden" name="action" value="unlink-categories">
+                                    <input type="hidden" name="product_category_id" value="{{ category.id }}">
+                                    <input type="hidden" name="shopping_category_id" value="{{ shopping_category.id }}">
+                                    <button type="submit" class="tag-button secondary">{{ shopping_category.name }}
+                                        x</button>
+                                </form>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span class="subtle">Noch keiner Einkaufskategorie zugeordnet</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a class="button-link secondary tag-button"
+                                    href="{{ url_for('new_product', product_category_id=category.id) }}">Produkt
+                                    anlegen</a>
+                                <a class="button-link secondary tag-button"
+                                    href="{{ url_for('index', q=category.name) }}">Im Dashboard</a>
+                            </div>
+                            <form method="post">
+                                <input type="hidden" name="action" value="delete-product-category">
+                                <input type="hidden" name="product_category_id" value="{{ category.id }}">
+                                <button type="submit" class="secondary">Loeschen</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">Noch keine Produktkategorien vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="category-shopping">
+    <summary>
+        <div>
+            <p class="eyebrow">Verwaltung</p>
+            <h2>Einkaufskategorien verwalten</h2>
+            <p class="subtle">Sortierwert, Namen und direkte Spruenge zur Einkaufsliste bleiben erreichbar, ohne die
+                Seite zu ueberladen.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ shopping_category_count }} Eintraege</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Einkaufskategorie</th>
+                        <th>Produktkategorien</th>
+                        <th>Produkte</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in shopping_categories %}
+                    <tr>
+                        <td>
+                            <form method="post" class="inline-edit-form inline-edit-form-wide">
+                                <input type="hidden" name="action" value="update-shopping-category">
+                                <input type="hidden" name="shopping_category_id" value="{{ category.id }}">
+                                <input name="shopping_category_name" value="{{ category.name }}"
+                                    aria-label="Einkaufskategorie umbenennen">
+                                <input name="sort_order" type="number" value="{{ category.sort_order }}"
+                                    aria-label="Sortierreihenfolge">
+                                <button type="submit" class="secondary">Speichern</button>
+                            </form>
+                        </td>
+                        <td>{{ category.product_category_label or '-' }}</td>
+                        <td>{{ category.product_count }}</td>
+                        <td>
+                            <p class="subtle">
+                                {% if category.included_shopping_categories %}
+                                Nimmt mit: {{ category.included_shopping_category_label }}
+                                {% else %}
+                                Keine Mitnahme-Regel
+                                {% endif %}
+                            </p>
+                            <div class="table-actions">
+                                <a class="button-link secondary tag-button"
+                                    href="{{ url_for('shopping_list', category=category.name) }}">Zur Einkaufsliste</a>
+                                <a class="button-link secondary tag-button"
+                                    href="{{ url_for('index', q=category.name) }}">Im Dashboard</a>
+                            </div>
+                            <form method="post">
+                                <input type="hidden" name="action" value="delete-shopping-category">
+                                <input type="hidden" name="shopping_category_id" value="{{ category.id }}">
+                                <button type="submit" class="secondary">Loeschen</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">Noch keine Einkaufskategorien vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <section class="category-subpanel">
+            <div class="section-head compact-head">
+                <div>
+                    <h3>Listen-Mitnahme einstellen</h3>
+                    <p class="subtle">Hier legst du fest, welche Einkaufskategorien beim Erstellen einer anderen Liste
+                        automatisch mit aufgenommen werden. Beispiel: Wocheneinkauf kann Basics mitziehen.</p>
+                </div>
+            </div>
+            <div class="detail-grid categories-layout">
+                {% for category in shopping_categories %}
+                <form class="product-form selection-group" method="post">
+                    <input type="hidden" name="action" value="update-shopping-category-inclusions">
+                    <input type="hidden" name="shopping_category_id" value="{{ category.id }}">
+                    <div>
+                        <strong>{{ category.name }}</strong>
+                        <p class="subtle">
+                            {% if category.included_shopping_categories %}
+                            Wird erweitert um: {{ category.included_shopping_category_label }}
+                            {% else %}
+                            Aktuell werden keine weiteren Einkaufskategorien automatisch mit aufgenommen.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <fieldset class="selection-group">
+                        <legend>Zusaetzlich mit aufnehmen</legend>
+                        <div class="checkbox-grid">
+                            {% for include_option in shopping_categories if include_option.id != category.id %}
+                            <label class="check-card">
+                                <input type="checkbox" name="included_shopping_category_ids"
+                                    value="{{ include_option.id }}" {% if include_option.id in
+                                    category.included_shopping_category_ids %}checked{% endif %}>
+                                <span>{{ include_option.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    <div class="form-actions">
+                        <button type="submit" class="secondary">Mitnahme speichern</button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="empty-state">Noch keine Einkaufskategorien vorhanden.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</details>
+
+<script>
+    (function () {
+        const sortable = document.getElementById("shopping-category-sortable");
+        if (!sortable) {
+            return;
+        }
+
+        let draggedItem = null;
+
+        function getSortableItem(element) {
+            return element?.closest(".sortable-item");
+        }
+
+        sortable.addEventListener("dragstart", (event) => {
+            draggedItem = getSortableItem(event.target);
+            if (!draggedItem) {
+                return;
+            }
+            draggedItem.classList.add("dragging");
+            event.dataTransfer.effectAllowed = "move";
+        });
+
+        sortable.addEventListener("dragend", () => {
+            draggedItem?.classList.remove("dragging");
+            draggedItem = null;
+        });
+
+        sortable.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            const targetItem = getSortableItem(event.target);
+            if (!draggedItem || !targetItem || draggedItem === targetItem) {
+                return;
+            }
+
+            const targetRect = targetItem.getBoundingClientRect();
+            const insertAfter = event.clientY > targetRect.top + targetRect.height / 2;
+            if (insertAfter) {
+                targetItem.after(draggedItem);
+            } else {
+                targetItem.before(draggedItem);
+            }
+        });
+    })();
+</script>
+{% endblock %}

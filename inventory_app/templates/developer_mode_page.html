@@ -1,0 +1,157 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Entwicklermodus</p>
+        <h1>Testdaten und Strukturen bewusst zuruecksetzen.</h1>
+        <p class="lead">Dieser Bereich ist fuer Entwicklung, Tests und Neuaufbau gedacht. Alle Aktionen hier sind
+            absichtlich destruktiv und koennen nicht rueckgaengig gemacht werden.</p>
+    </div>
+    <div class="detail-actions">
+        <span class="status-pill warning-pill">Bestaetigung: {{ confirmation_phrase }}</span>
+    </div>
+</section>
+
+<section class="stats-grid">
+    <article class="stat-card">
+        <span>Produkte</span>
+        <strong>{{ product_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Lagerbewegungen</span>
+        <strong>{{ stock_movement_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>MHD-Chargen</span>
+        <strong>{{ expiry_batch_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Produktkategorien</span>
+        <strong>{{ product_category_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Einkaufskategorien</span>
+        <strong>{{ shopping_category_count }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>Zuordnungen</span>
+        <strong>{{ category_link_count }}</strong>
+    </article>
+</section>
+
+<section class="panel action-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Gefaehrliche Aktionen</h2>
+            <p class="subtle">Jede Aktion verlangt dieselbe Bestaetigungsphrase. So lassen sich Testdaten gezielt
+                bereinigen, ohne versehentlich den gesamten Bestand zu verlieren.</p>
+        </div>
+    </div>
+
+    <div class="developer-confirm-note">
+        <strong>Wichtig</strong>
+        <p>Zur Ausfuehrung muss im jeweiligen Feld exakt {{ confirmation_phrase }} eingetragen werden.</p>
+    </div>
+
+    <div class="developer-grid">
+        <article class="developer-card">
+            <div>
+                <h3>Alle Produkte loeschen</h3>
+                <p>Entfernt den kompletten Produktbestand inklusive Lagerbewegungen und MHD-Chargen.</p>
+            </div>
+            <ul>
+                <li>{{ product_count }} Produkte</li>
+                <li>{{ stock_movement_count }} Lagerbewegungen</li>
+                <li>{{ expiry_batch_count }} MHD-Chargen</li>
+            </ul>
+            <form class="developer-confirm-form" method="post">
+                <input type="hidden" name="action" value="clear-products">
+                <label>
+                    Bestaetigung
+                    <input name="confirmation_text" placeholder="{{ confirmation_phrase }}" autocomplete="off">
+                </label>
+                <button type="submit" class="danger">Produkte komplett loeschen</button>
+            </form>
+        </article>
+
+        <article class="developer-card">
+            <div>
+                <h3>Alle Kategorien loeschen</h3>
+                <p>Entfernt Produktkategorien, Einkaufskategorien und alle Zuordnungen. Produkte bleiben bestehen,
+                    verlieren aber ihre Kategorisierung.</p>
+            </div>
+            <ul>
+                <li>{{ product_category_count }} Produktkategorien</li>
+                <li>{{ shopping_category_count }} Einkaufskategorien</li>
+                <li>{{ category_link_count }} Zuordnungen</li>
+            </ul>
+            <form class="developer-confirm-form" method="post">
+                <input type="hidden" name="action" value="clear-categories">
+                <label>
+                    Bestaetigung
+                    <input name="confirmation_text" placeholder="{{ confirmation_phrase }}" autocomplete="off">
+                </label>
+                <button type="submit" class="danger">Kategorien komplett loeschen</button>
+            </form>
+        </article>
+
+        <article class="developer-card">
+            <div>
+                <h3>Nur Lagerbewegungen loeschen</h3>
+                <p>Setzt die Historie zurueck, ohne Produkte oder Kategorien anzutasten.</p>
+            </div>
+            <ul>
+                <li>{{ stock_movement_count }} Eintraege betroffen</li>
+            </ul>
+            <form class="developer-confirm-form" method="post">
+                <input type="hidden" name="action" value="clear-stock-movements">
+                <label>
+                    Bestaetigung
+                    <input name="confirmation_text" placeholder="{{ confirmation_phrase }}" autocomplete="off">
+                </label>
+                <button type="submit" class="danger">Lagerbewegungen loeschen</button>
+            </form>
+        </article>
+
+        <article class="developer-card">
+            <div>
+                <h3>Nur MHD-Chargen loeschen</h3>
+                <p>Entfernt alle gespeicherten Haltbarkeitschargen, ohne Bestandsdaten oder Kategorien zu veraendern.
+                </p>
+            </div>
+            <ul>
+                <li>{{ expiry_batch_count }} Eintraege betroffen</li>
+            </ul>
+            <form class="developer-confirm-form" method="post">
+                <input type="hidden" name="action" value="clear-expiry-batches">
+                <label>
+                    Bestaetigung
+                    <input name="confirmation_text" placeholder="{{ confirmation_phrase }}" autocomplete="off">
+                </label>
+                <button type="submit" class="danger">MHD-Chargen loeschen</button>
+            </form>
+        </article>
+
+        <article class="developer-card">
+            <div>
+                <h3>Komplettreset</h3>
+                <p>Loescht Produkte, Kategorien, Zuordnungen, Bewegungen und MHD-Chargen in einem Schritt. Danach
+                    werden nur die Standard-Einkaufskategorien neu angelegt.</p>
+            </div>
+            <ul>
+                <li>Leerer Neustart fuer Tests</li>
+                <li>Standard-Einkaufskategorien bleiben nutzbar</li>
+            </ul>
+            <form class="developer-confirm-form" method="post">
+                <input type="hidden" name="action" value="reset-all">
+                <label>
+                    Bestaetigung
+                    <input name="confirmation_text" placeholder="{{ confirmation_phrase }}" autocomplete="off">
+                </label>
+                <button type="submit" class="danger">Komplettreset ausfuehren</button>
+            </form>
+        </article>
+    </div>
+</section>
+{% endblock %}

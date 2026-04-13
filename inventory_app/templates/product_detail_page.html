@@ -1,0 +1,468 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Detailansicht fuer ein einzelnes Produkt samt Buchungsformular und Historie. -->
+<section class="detail-header">
+    <div>
+        <p class="eyebrow">Produkt</p>
+        <h1>{{ product.name }}</h1>
+        <p class="lead">Barcodes: {{ product.barcode_label or 'nicht hinterlegt' }} | Ort: {{ product.storage_location
+            or 'nicht hinterlegt' }}</p>
+    </div>
+    <div class="detail-actions">
+        <a class="button-link secondary" href="{{ url_for('edit_product', product_id=product.id) }}">Bearbeiten</a>
+        <a class="button-link" href="{{ url_for('scan') }}">Scanner</a>
+    </div>
+</section>
+
+<section class="stats-grid compact">
+    <article class="stat-card">
+        <span>Ist</span>
+        <strong>{{ product.current_quantity }} {{ product.unit }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Soll</span>
+        <strong>{{ product.target_quantity }} {{ product.unit }}</strong>
+    </article>
+    <article class="stat-card {% if product.current_quantity <= product.min_quantity %}warning{% endif %}">
+        <span>Mindestbestand</span>
+        <strong>{{ product.min_quantity }} {{ product.unit }}</strong>
+    </article>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Buchung, Stammdaten und Historie sind getrennt, damit die Detailseite ruhiger und
+                schneller erfassbar bleibt.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#product-movement">
+            <strong>Lagerbewegung</strong>
+            <span>Ein- und Auslagerungen ohne Ablenkung direkt buchen.</span>
+            <small>Schnellaktion</small>
+        </a>
+        <a class="hub-card" href="#product-expiry">
+            <strong>Haltbarkeitsdatum</strong>
+            <span>MHD-Pflicht, aelteste Charge und offene Datumsbestaende im Blick.</span>
+            <small>{{ product.expiry_status_label if product.requires_expiry_date else 'Nicht aktiv' }}</small>
+        </a>
+        <a class="hub-card" href="#product-barcodes">
+            <strong>Barcodes</strong>
+            <span>Primaercode und weitere erkannte Codes zentral verwalten.</span>
+            <small>{{ product.all_barcodes|length }} bekannt</small>
+        </a>
+        <a class="hub-card" href="#product-attributes">
+            <strong>Attribute</strong>
+            <span>SKU, Kategorien, Notizen und Zusatzdaten gesammelt ansehen.</span>
+            <small>Stammdaten</small>
+        </a>
+        <a class="hub-card" href="#product-history">
+            <strong>Historie</strong>
+            <span>Vergangene Lagerbewegungen separat nachvollziehen.</span>
+            <small>{{ movements|length }} Eintraege</small>
+        </a>
+    </div>
+</section>
+
+<details class="panel category-accordion" id="product-movement" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Schnellzugriff</p>
+            <h2>Lagerbewegung buchen</h2>
+            <p class="subtle">Die wichtigste Aktion bleibt direkt offen, damit Buchen weiterhin schnell geht.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">Ist: {{ product.current_quantity }} {{ product.unit }}</span>
+            <span class="status-pill">Soll: {{ product.target_quantity }} {{ product.unit }}</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="detail-grid">
+            <section class="category-subpanel">
+                <form class="movement-form" method="post" action="{{ url_for('move_product', product_id=product.id) }}"
+                    data-expiry-required="{{ 1 if product.requires_expiry_date else 0 }}"
+                    data-expiry-product-name="{{ product.name }}">
+                    <label>
+                        Richtung
+                        <select name="direction">
+                            <option value="out">Auslagern</option>
+                            <option value="in">Einlagern</option>
+                        </select>
+                    </label>
+                    <label>
+                        Menge
+                        <input name="quantity" type="number" min="1" value="1" required>
+                    </label>
+                    <label>
+                        Referenz
+                        <input name="reference" placeholder="z.B. Einkauf, Verbrauch, Raum A">
+                    </label>
+                    <label>
+                        Notiz
+                        <textarea name="note" rows="3"></textarea>
+                    </label>
+                    <input type="hidden" name="expiry_date" value="">
+                    <button type="submit">Buchung speichern</button>
+                </form>
+            </section>
+            <section class="category-subpanel">
+                <div class="filter-summary-row detail-summary-single">
+                    <div class="category-summary">
+                        <strong>Warnstatus</strong>
+                        <p>{% if product.current_quantity <= product.min_quantity %}Der aktuelle Bestand liegt bereits
+                                auf oder unter Mindestbestand.{% else %}Der aktuelle Bestand liegt oberhalb des
+                                Mindestbestands.{% endif %}</p>
+                    </div>
+                    <div class="category-summary">
+                        <strong>Scanner-Shortcut</strong>
+                        <p>Fuer besonders schnellen Alltag kannst du alternativ direkt in den Scanner wechseln.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="product-expiry" {% if product.requires_expiry_date %}open{% endif %}>
+    <summary>
+        <div>
+            <p class="eyebrow">Rueckverfolgung</p>
+            <h2>Haltbarkeitsdaten</h2>
+            <p class="subtle">Hier siehst du, ob fuer dieses Produkt ein MHD erforderlich ist und welche Chargen aktuell
+                offen sind.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill {% if product.requires_expiry_date %}expiry-soon-pill{% endif %}">{{ 'Aktiv' if
+                product.requires_expiry_date else 'Nicht erforderlich' }}</span>
+            {% if product.requires_expiry_date %}
+            <span class="status-pill expiry-status-{{ product.expiry_status }}">{{ product.expiry_status_label }}</span>
+            {% endif %}
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="filter-summary-row expiry-summary-row">
+            <div class="category-summary">
+                <strong>Naechstes MHD</strong>
+                <p>{% if product.next_expiry_display %}Aelteste offene Charge vom {{ product.next_expiry_display }}.{%
+                    elif product.requires_expiry_date %}Noch kein Haltbarkeitsdatum fuer den aktuellen Bestand
+                    erfasst.{% else %}Dieses Produkt benoetigt aktuell kein Haltbarkeitsdatum.{% endif %}</p>
+            </div>
+            <div class="category-summary">
+                <strong>Erfasster Bestand</strong>
+                <p>{{ product.tracked_expiry_quantity }} {{ product.unit }} mit Datum{% if
+                    product.missing_expiry_quantity %}, {{ product.missing_expiry_quantity }} {{ product.unit }} ohne
+                    Datum{% endif %}.</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Haltbarkeitsdatum</th>
+                        <th>Offene Menge</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in product.expiry_batches %}
+                    <tr>
+                        <td>{{ batch.expires_display }}</td>
+                        <td>{{ batch.quantity_remaining }} {{ product.unit }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" class="empty-state">Noch keine offenen MHD-Chargen fuer dieses Produkt
+                            vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="product-barcodes" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Erkennung</p>
+            <h2>Barcodes</h2>
+            <p class="subtle">Ein Produkt kann mehrere Barcodes haben. Der erste Eintrag bleibt der Primaercode.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ product.all_barcodes|length }} bekannt</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="detail-grid">
+            <section class="category-subpanel">
+                <div class="category-summary">
+                    <strong>Bekannte Barcodes</strong>
+                    <p>{% if product.barcode %}Primaercode: {{ product.barcode }}{% else %}Noch kein Primaercode
+                        hinterlegt.{% endif %}</p>
+                    {% if product.additional_barcodes %}
+                    <p class="subtle">Weitere Codes: {{ product.additional_barcodes|join(', ') }}</p>
+                    {% else %}
+                    <p class="subtle">Noch keine weiteren Barcodes hinterlegt.</p>
+                    {% endif %}
+                </div>
+            </section>
+            <section class="category-subpanel">
+                <form class="movement-form" method="post"
+                    action="{{ url_for('add_product_barcode', product_id=product.id) }}">
+                    <label>
+                        Neuen Barcode hinzufuegen
+                        <input name="barcode" placeholder="z.B. zweiter EAN-Code" required>
+                    </label>
+                    <button type="submit">Barcode speichern</button>
+                </form>
+            </section>
+        </div>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="product-attributes">
+    <summary>
+        <div>
+            <p class="eyebrow">Stammdaten</p>
+            <h2>Attribute</h2>
+            <p class="subtle">Alle Eigenschaften liegen gebuendelt in einem eigenen Untermenue statt dauerhaft neben der
+                Buchung.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ product.product_category or 'Ohne Lebensmittelart' }}</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <dl class="attribute-list">
+            <div>
+                <dt>SKU</dt>
+                <dd>{{ product.sku or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Lebensmittelart</dt>
+                <dd>{{ product.product_category or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Einkaufskategorien</dt>
+                <dd>{{ product.shopping_category_label or '-' }}</dd>
+            </div>
+            <div>
+                <dt>Haltbarkeitsdatum</dt>
+                <dd>{{ 'Erforderlich' if product.requires_expiry_date else 'Nicht erforderlich' }}</dd>
+            </div>
+            <div>
+                <dt>Notizen</dt>
+                <dd>{{ product.notes or '-' }}</dd>
+            </div>
+            {% for key, value in product.attributes.items() %}
+            <div>
+                <dt>{{ key }}</dt>
+                <dd>{{ value }}</dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </div>
+</details>
+
+<details class="panel category-accordion" id="product-history" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Historie</p>
+            <h2>Letzte Lagerbewegungen</h2>
+            <p class="subtle">Die Buchungshistorie bleibt sichtbar, ist aber klar von der eigentlichen Aktion getrennt.
+            </p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ movements|length }} Eintraege</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Zeit</th>
+                        <th>Typ</th>
+                        <th>Menge</th>
+                        <th>Referenz</th>
+                        <th>Notiz</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in movements %}
+                    <tr>
+                        <td>{{ movement.created_at }}</td>
+                        <td>{{ 'Einlagerung' if movement.movement_type == 'in' else 'Auslagerung' }}</td>
+                        <td>{{ movement.quantity }} {{ product.unit }}</td>
+                        <td>{{ movement.reference or '-' }}</td>
+                        <td>{{ movement.note or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">Noch keine Buchungen vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<div class="expiry-modal" id="expiry-modal" hidden>
+    <div class="expiry-modal-backdrop" data-close-expiry-modal></div>
+    <div class="expiry-modal-card" role="dialog" aria-modal="true" aria-labelledby="expiry-modal-title">
+        <p class="eyebrow">Haltbarkeitsdatum</p>
+        <h2 id="expiry-modal-title">Datum fuer {{ product.name }} auswaehlen</h2>
+        <p class="subtle">3 Klicks: Jahr, Monat, Tag. Danach wird die Einlagerung direkt gespeichert.</p>
+        <div class="expiry-step-grid">
+            <section>
+                <strong>1. Jahr</strong>
+                <div class="expiry-option-grid" data-expiry-years></div>
+            </section>
+            <section>
+                <strong>2. Monat</strong>
+                <div class="expiry-option-grid" data-expiry-months></div>
+            </section>
+            <section>
+                <strong>3. Tag</strong>
+                <div class="expiry-option-grid" data-expiry-days></div>
+            </section>
+        </div>
+        <p class="category-summary expiry-selection-preview" data-expiry-selection-preview>Noch kein Datum gewaehlt.</p>
+        <div class="form-actions">
+            <button type="button" class="secondary" data-close-expiry-modal>Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const movementForm = document.querySelector(".movement-form[data-expiry-required]");
+        const expiryModal = document.getElementById("expiry-modal");
+        const yearsHost = expiryModal?.querySelector("[data-expiry-years]");
+        const monthsHost = expiryModal?.querySelector("[data-expiry-months]");
+        const daysHost = expiryModal?.querySelector("[data-expiry-days]");
+        const preview = expiryModal?.querySelector("[data-expiry-selection-preview]");
+        const closeButtons = expiryModal?.querySelectorAll("[data-close-expiry-modal]") || [];
+
+        if (!movementForm || !expiryModal || !yearsHost || !monthsHost || !daysHost || !preview) {
+            return;
+        }
+
+        const availableYears = Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 1 + index);
+        let pendingForm = null;
+        let selectedYear = "";
+        let selectedMonth = "";
+
+        const renderOptions = (host, values, selectedValue, formatter, onClick) => {
+            host.innerHTML = "";
+            values.forEach((value) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `expiry-option-button${selectedValue === value ? " is-active" : ""}`;
+                button.textContent = formatter(value);
+                button.addEventListener("click", () => onClick(value));
+                host.appendChild(button);
+            });
+        };
+
+        const updatePreview = (day = "") => {
+            if (!selectedYear || !selectedMonth || !day) {
+                preview.textContent = "Noch kein Datum gewaehlt.";
+                return;
+            }
+
+            preview.textContent = `Ausgewaehlt: ${String(day).padStart(2, "0")}.${String(selectedMonth).padStart(2, "0")}.${selectedYear}`;
+        };
+
+        const closeModal = () => {
+            expiryModal.hidden = true;
+            pendingForm = null;
+            selectedYear = "";
+            selectedMonth = "";
+            yearsHost.innerHTML = "";
+            monthsHost.innerHTML = "";
+            daysHost.innerHTML = "";
+            updatePreview();
+        };
+
+        const submitWithDay = (day) => {
+            if (!pendingForm) {
+                return;
+            }
+
+            const expiryInput = pendingForm.querySelector('[name="expiry_date"]');
+            if (!expiryInput) {
+                return;
+            }
+
+            expiryInput.value = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            updatePreview(day);
+            expiryModal.hidden = true;
+            pendingForm.submit();
+        };
+
+        const renderDays = () => {
+            if (!selectedYear || !selectedMonth) {
+                daysHost.innerHTML = "";
+                return;
+            }
+
+            const daysInMonth = new Date(Number(selectedYear), Number(selectedMonth), 0).getDate();
+            renderOptions(daysHost, Array.from({ length: daysInMonth }, (_, index) => index + 1), "", (value) => String(value), submitWithDay);
+        };
+
+        const renderMonths = () => {
+            if (!selectedYear) {
+                monthsHost.innerHTML = "";
+                return;
+            }
+
+            renderOptions(monthsHost, Array.from({ length: 12 }, (_, index) => index + 1), selectedMonth, (value) => String(value).padStart(2, "0"), (value) => {
+                selectedMonth = value;
+                renderMonths();
+                renderDays();
+            });
+        };
+
+        const renderYears = () => {
+            renderOptions(yearsHost, availableYears, selectedYear, (value) => String(value), (value) => {
+                selectedYear = value;
+                selectedMonth = "";
+                renderYears();
+                renderMonths();
+                daysHost.innerHTML = "";
+                updatePreview();
+            });
+        };
+
+        const openModal = (form) => {
+            pendingForm = form;
+            selectedYear = "";
+            selectedMonth = "";
+            yearsHost.innerHTML = "";
+            monthsHost.innerHTML = "";
+            daysHost.innerHTML = "";
+            updatePreview();
+            renderYears();
+            expiryModal.hidden = false;
+        };
+
+        closeButtons.forEach((button) => button.addEventListener("click", closeModal));
+
+        movementForm.addEventListener("submit", (event) => {
+            const requiresExpiry = movementForm.dataset.expiryRequired === "1";
+            const direction = movementForm.querySelector('[name="direction"]')?.value;
+            const expiryInput = movementForm.querySelector('[name="expiry_date"]');
+            if (!requiresExpiry || direction !== "in" || expiryInput?.value) {
+                return;
+            }
+
+            event.preventDefault();
+            openModal(movementForm);
+        });
+    })();
+</script>
+{% endblock %}

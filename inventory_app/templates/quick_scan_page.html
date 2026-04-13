@@ -1,0 +1,306 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% if last_result %}
+<section
+    class="scan-feedback-toast {{ 'scan-feedback-toast-in' if last_result.movement_type == 'in' else 'scan-feedback-toast-out' }}"
+    id="scan-feedback-toast" aria-live="polite" aria-atomic="true">
+    <div>
+        <p class="eyebrow">Rueckmeldung</p>
+        <h2>{{ last_result.message }}</h2>
+        <p>{{ last_result.product.name }} | Neuer Bestand: {{ last_result.product.current_quantity }} {{
+            last_result.product.unit }}</p>
+        {% if last_result.expiry_display %}
+        <p class="subtle">{% if last_result.movement_type == 'in' %}Naechstes MHD: {% else %}Aelteste Charge: {% endif
+            %}{{ last_result.expiry_display }}</p>
+        {% endif %}
+    </div>
+    <div class="scan-feedback-actions">
+        <a class="button-link secondary"
+            href="{{ url_for('product_detail', product_id=last_result.product.id) }}">Detailansicht</a>
+        <button type="button" class="scan-feedback-close" data-close-scan-feedback
+            aria-label="Rueckmeldung schliessen">Schliessen</button>
+    </div>
+</section>
+{% endif %}
+
+{% if pending_expiry_capture %}
+<form id="quick-scan-expiry-form" method="post">
+    <input type="hidden" name="barcode" value="{{ pending_expiry_capture.barcode }}">
+    <input type="hidden" name="movement_type" value="{{ pending_expiry_capture.movement_type }}">
+    <input type="hidden" name="expiry_date" value="">
+    <input type="hidden" name="quantity" value="{{ pending_expiry_capture.quantity or 1 }}">
+</form>
+
+<div class="expiry-modal" id="quick-scan-expiry-modal">
+    <div class="expiry-modal-backdrop" data-close-expiry-modal></div>
+    <div class="expiry-modal-card" role="dialog" aria-modal="true" aria-labelledby="quick-scan-expiry-title">
+        <p class="eyebrow">Haltbarkeitsdatum</p>
+        <h2 id="quick-scan-expiry-title">{{ pending_expiry_capture.product.name }} einlagern</h2>
+        <p class="subtle">3 Klicks: Jahr, Monat, Tag. Danach wird die Einlagerung direkt gebucht.</p>
+        <label>
+            Einzulagernde Menge
+            <input type="number" name="quantity_display" min="1" step="1"
+                value="{{ pending_expiry_capture.quantity or 1 }}" form="quick-scan-expiry-form" required>
+        </label>
+        <div class="expiry-step-grid">
+            <section>
+                <strong>1. Jahr</strong>
+                <div class="expiry-option-grid" data-expiry-years></div>
+            </section>
+            <section>
+                <strong>2. Monat</strong>
+                <div class="expiry-option-grid" data-expiry-months></div>
+            </section>
+            <section>
+                <strong>3. Tag</strong>
+                <div class="expiry-option-grid" data-expiry-days></div>
+            </section>
+        </div>
+        <p class="category-summary expiry-selection-preview" data-expiry-selection-preview>Noch kein Datum gewaehlt.</p>
+        <div class="form-actions">
+            <a class="button-link secondary"
+                href="{{ url_for('quick_scan_focus' if fullscreen_mode else 'quick_scan') }}">Abbrechen</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<section class="scanner-hero">
+    <div>
+        <p class="eyebrow">Scanner-Alltag</p>
+        <h1>1x Barcode zum Auslagern, 2x derselbe Barcode zum Einlagern.</h1>
+        <p class="lead">Der Modus wartet kurz auf einen zweiten identischen Barcode. Bleibt er aus, wird automatisch
+            ausgelagert. Unbekannte Barcodes oeffnen direkt die Produktanlage.</p>
+    </div>
+    <div class="scanner-toolbar {% if fullscreen_mode %}scanner-toolbar-focus{% endif %}">
+        {% if fullscreen_mode %}
+        <a class="button-link secondary" href="{{ url_for('quick_scan') }}">Normale Ansicht</a>
+        {% else %}
+        <a class="button-link secondary" href="{{ url_for('quick_scan_focus') }}">Vollbildmodus</a>
+        {% endif %}
+    </div>
+    <form class="scanner-form {% if fullscreen_mode %}scanner-form-focus{% endif %}" id="quick-scan-form" method="post">
+        <label for="quick-barcode">Barcode</label>
+        <input id="quick-barcode" name="barcode" value="{{ scanned_barcode or '' }}" autofocus autocomplete="off">
+        <input id="movement-type" type="hidden" name="movement_type" value="out">
+        <button type="submit">Scan verarbeiten</button>
+    </form>
+</section>
+
+<section class="panel category-overview-panel {% if fullscreen_mode %}no-print{% endif %}">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Der Scanner-Alltag bleibt auf das Wesentliche reduziert: scannen, Rueckmeldung sehen, nur
+                bei Bedarf Hilfe oeffnen.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#scanner-scan">
+            <strong>Scanfeld</strong>
+            <span>Barcode erfassen und sofort verarbeiten.</span>
+            <small>Hauptaktion</small>
+        </a>
+        <a class="hub-card" href="#scanner-help">
+            <strong>Ablaufhilfe</strong>
+            <span>Nur bei Bedarf oeffnen, damit die Seite ruhig bleibt.</span>
+            <small>Kurzanleitung</small>
+        </a>
+    </div>
+</section>
+
+{% if fullscreen_mode %}
+<section class="panel focus-note-panel" id="scanner-scan">
+    <p class="lead">Nur Scan-Rueckmeldung aktiv. Ein Scan lagert aus, zwei gleiche Scans lagern ein.</p>
+</section>
+{% else %}
+<details class="panel category-accordion instruction-panel" id="scanner-help">
+    <summary>
+        <div>
+            <p class="eyebrow">Kurzhilfe</p>
+            <h2>So funktioniert es</h2>
+            <p class="subtle">Die Anleitung liegt in einem Untermenue und verdeckt den Scanner nicht dauerhaft.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">900 ms Doppelscan-Fenster</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <ol class="steps-list">
+            <li>Ein einzelner Barcode bucht -1 auf den Bestand.</li>
+            <li>Zwei gleiche Barcodes innerhalb von 900 ms buchen +1 auf den Bestand.</li>
+            <li>Unbekannte Barcodes springen direkt in die Neuanlage mit vorausgefuelltem Barcode.</li>
+            <li>Der Fokus springt nach jeder Buchung wieder in das Barcode-Feld.</li>
+        </ol>
+    </div>
+</details>
+{% endif %}
+
+<script>
+    (() => {
+        const form = document.getElementById("quick-scan-form");
+        const barcodeInput = document.getElementById("quick-barcode");
+        const movementTypeInput = document.getElementById("movement-type");
+        const feedbackToast = document.getElementById("scan-feedback-toast");
+        const closeFeedbackButton = document.querySelector("[data-close-scan-feedback]");
+        const expiryModal = document.getElementById("quick-scan-expiry-modal");
+        const expiryForm = document.getElementById("quick-scan-expiry-form");
+        const yearsHost = expiryModal?.querySelector("[data-expiry-years]");
+        const monthsHost = expiryModal?.querySelector("[data-expiry-months]");
+        const daysHost = expiryModal?.querySelector("[data-expiry-days]");
+        const preview = expiryModal?.querySelector("[data-expiry-selection-preview]");
+        let pendingBarcode = "";
+        let pendingTimer = null;
+        let feedbackHideTimer = null;
+
+        if (!form || !barcodeInput || !movementTypeInput) {
+            return;
+        }
+
+        const closeFeedbackToast = () => {
+            if (!feedbackToast) {
+                return;
+            }
+
+            feedbackToast.classList.add("is-hiding");
+            window.setTimeout(() => {
+                feedbackToast.remove();
+            }, 220);
+        };
+
+        if (feedbackToast) {
+            feedbackHideTimer = window.setTimeout(closeFeedbackToast, 4200);
+
+            if (closeFeedbackButton) {
+                closeFeedbackButton.addEventListener("click", () => {
+                    if (feedbackHideTimer) {
+                        window.clearTimeout(feedbackHideTimer);
+                    }
+                    closeFeedbackToast();
+                });
+            }
+        }
+
+        if (expiryModal && expiryForm && yearsHost && monthsHost && daysHost && preview) {
+            const availableYears = Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 1 + index);
+            const quantityInput = expiryForm.querySelector('[name="quantity"]');
+            const quantityDisplayInput = document.querySelector('[name="quantity_display"][form="quick-scan-expiry-form"]');
+            let selectedYear = "";
+            let selectedMonth = "";
+
+            if (quantityInput && quantityDisplayInput) {
+                const syncQuantity = () => {
+                    quantityInput.value = quantityDisplayInput.value || "1";
+                };
+
+                quantityDisplayInput.addEventListener("input", syncQuantity);
+                syncQuantity();
+            }
+
+            const renderOptions = (host, values, selectedValue, formatter, onClick) => {
+                host.innerHTML = "";
+                values.forEach((value) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = `expiry-option-button${selectedValue === value ? " is-active" : ""}`;
+                    button.textContent = formatter(value);
+                    button.addEventListener("click", () => onClick(value));
+                    host.appendChild(button);
+                });
+            };
+
+            const updatePreview = (day = "") => {
+                preview.textContent = selectedYear && selectedMonth && day
+                    ? `Ausgewaehlt: ${String(day).padStart(2, "0")}.${String(selectedMonth).padStart(2, "0")}.${selectedYear}`
+                    : "Noch kein Datum gewaehlt.";
+            };
+
+            const submitDate = (day) => {
+                const expiryInput = expiryForm.querySelector('[name="expiry_date"]');
+                if (!expiryInput) {
+                    return;
+                }
+
+                expiryInput.value = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                updatePreview(day);
+                expiryForm.submit();
+            };
+
+            const renderDays = () => {
+                if (!selectedYear || !selectedMonth) {
+                    daysHost.innerHTML = "";
+                    return;
+                }
+
+                const daysInMonth = new Date(Number(selectedYear), Number(selectedMonth), 0).getDate();
+                renderOptions(daysHost, Array.from({ length: daysInMonth }, (_, index) => index + 1), "", (value) => String(value), submitDate);
+            };
+
+            const renderMonths = () => {
+                if (!selectedYear) {
+                    monthsHost.innerHTML = "";
+                    return;
+                }
+
+                renderOptions(monthsHost, Array.from({ length: 12 }, (_, index) => index + 1), selectedMonth, (value) => String(value).padStart(2, "0"), (value) => {
+                    selectedMonth = value;
+                    renderMonths();
+                    renderDays();
+                });
+            };
+
+            const renderYears = () => {
+                renderOptions(yearsHost, availableYears, selectedYear, (value) => String(value), (value) => {
+                    selectedYear = value;
+                    selectedMonth = "";
+                    renderYears();
+                    renderMonths();
+                    daysHost.innerHTML = "";
+                    updatePreview();
+                });
+            };
+
+            renderYears();
+        }
+
+        const submitMovement = (barcode, movementType) => {
+            barcodeInput.value = barcode;
+            movementTypeInput.value = movementType;
+            form.submit();
+        };
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const barcode = barcodeInput.value.trim();
+            if (!barcode) {
+                barcodeInput.focus();
+                return;
+            }
+
+            if (pendingTimer && pendingBarcode === barcode) {
+                window.clearTimeout(pendingTimer);
+                pendingTimer = null;
+                pendingBarcode = "";
+                submitMovement(barcode, "in");
+                return;
+            }
+
+            pendingBarcode = barcode;
+            pendingTimer = window.setTimeout(() => {
+                pendingTimer = null;
+                pendingBarcode = "";
+                submitMovement(barcode, "out");
+            }, 900);
+
+            barcodeInput.value = "";
+            barcodeInput.focus();
+        });
+
+        window.addEventListener("load", () => {
+            barcodeInput.focus();
+            barcodeInput.select();
+        });
+    })();
+</script>
+{% endblock %}

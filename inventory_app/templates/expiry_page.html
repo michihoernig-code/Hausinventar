@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Haltbarkeitsdatum</p>
+        <h1>MHD-pflichtige Produkte und Ablaufwarnungen.</h1>
+        <p class="lead">Hier siehst du Produkte mit Haltbarkeitsdatum, erkennst drohende Ablauftermine und springst
+            direkt in die passende Detailansicht.</p>
+    </div>
+    <div class="detail-actions">
+        <a class="button-link" href="{{ url_for('products_page') }}">Zur Produktverwaltung</a>
+        <a class="button-link secondary" href="{{ url_for('new_product') }}">Produkt anlegen</a>
+    </div>
+</section>
+
+<section class="stats-grid compact">
+    <article class="stat-card">
+        <span>Gut</span>
+        <strong>{{ expiry_good_count }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>In 5 bis 1 Tagen</span>
+        <strong>{{ expiry_soon_count }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>Abgelaufen</span>
+        <strong>{{ expiry_expired_count }}</strong>
+    </article>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Filter</h2>
+            <p class="subtle">Wechsle zwischen allen MHD-Produkten, gutem Bestand, bald faelligen Artikeln und bereits
+                abgelaufenen Produkten.</p>
+        </div>
+    </div>
+    <div class="chip-row compact-chips">
+        <a class="filter-chip {% if status_filter == 'all' %}active{% endif %}"
+            href="{{ url_for('expiry_page') }}">Alle</a>
+        <a class="filter-chip {% if status_filter == 'good' %}active{% endif %}"
+            href="{{ url_for('expiry_page', status='good') }}">Gut</a>
+        <a class="filter-chip {% if status_filter == 'expiring_soon' %}active{% endif %}"
+            href="{{ url_for('expiry_page', status='expiring_soon') }}">In 5 bis 1 Tagen</a>
+        <a class="filter-chip {% if status_filter == 'expired' %}active{% endif %}"
+            href="{{ url_for('expiry_page', status='expired') }}">Abgelaufen</a>
+        <a class="filter-chip {% if status_filter == 'missing' %}active{% endif %}"
+            href="{{ url_for('expiry_page', status='missing') }}">Ohne Datum</a>
+    </div>
+    <div class="filter-summary-row expiry-summary-row">
+        <div class="category-summary">
+            <strong>MHD-pflichtige Produkte</strong>
+            <p>{{ tracked_product_count }} Produkte sind aktuell fuer die MHD-Verfolgung markiert.</p>
+        </div>
+        <div class="category-summary">
+            <strong>Fehlende Daten</strong>
+            <p>{% if expiry_missing_count %}Bei {{ expiry_missing_count }} Produkten fehlen noch Datumsangaben fuer
+                Teile des Bestands.{% else %}Aktuell fehlen keine Datumsangaben fuer MHD-pflichtige Bestandsprodukte.{%
+                endif %}</p>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Produkte mit Haltbarkeitsdatum</h2>
+            <p class="subtle">Der aelteste offene Termin je Produkt bestimmt den Status.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Produkt</th>
+                    <th>Status</th>
+                    <th>Naechstes MHD</th>
+                    <th>Erfasste Menge</th>
+                    <th>Ort</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in items %}
+                <tr>
+                    <td>
+                        <strong>{{ product.name }}</strong>
+                        <div class="subtle">{{ product.product_category or 'Ohne Lebensmittelart' }}</div>
+                    </td>
+                    <td><span class="expiry-status-badge expiry-status-{{ product.expiry_status }}">{{
+                            product.expiry_status_label }}</span></td>
+                    <td>{{ product.next_expiry_display or '-' }}</td>
+                    <td>
+                        {% if product.next_expiry_display %}
+                        {{ product.next_expiry_quantity }} {{ product.unit }} mit diesem Datum
+                        {% elif product.tracked_expiry_quantity %}
+                        {{ product.tracked_expiry_quantity }} {{ product.unit }} mit Datum
+                        {% else %}
+                        -
+                        {% endif %}
+                        {% if product.missing_expiry_quantity %}
+                        | {{ product.missing_expiry_quantity }} ohne Datum
+                        {% endif %}
+                    </td>
+                    <td>{{ product.storage_location or '-' }}</td>
+                    <td><a href="{{ url_for('product_detail', product_id=product.id) }}#product-expiry">Oeffnen</a></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty-state">Keine Produkte fuer den gewaehlten MHD-Filter vorhanden.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

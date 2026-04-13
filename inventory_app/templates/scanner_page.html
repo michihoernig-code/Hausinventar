@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Scanner</p>
+        <h1>Beide Barcode-Workflows an einem Ort.</h1>
+        <p class="lead">Hier waehlst du, ob du im schnellen Scanner-Alltag arbeiten oder einen Barcode gezielt suchen
+            und direkt buchen willst.</p>
+    </div>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Scanner-Modi</h2>
+            <p class="subtle">Beide Wege nutzen denselben Produktbestand, sind aber fuer unterschiedliche Aufgaben
+                gedacht.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="{{ url_for('quick_scan') }}">
+            <strong>Scanner alltag</strong>
+            <span>Ein Scan lagert aus, zwei schnelle gleiche Scans lagern ein.</span>
+            <small>Fuer den taeglichen Ablauf</small>
+        </a>
+        <a class="hub-card" href="{{ url_for('scan') }}">
+            <strong>Barcode scannen</strong>
+            <span>Einzelnen Barcode gezielt aufrufen, pruefen und danach direkt buchen.</span>
+            <small>Fuer gezielte Suche</small>
+        </a>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Wann welcher Modus sinnvoll ist</h2>
+        </div>
+    </div>
+    <div class="help-grid">
+        <article class="help-card">
+            <strong>Scanner alltag</strong>
+            <p>Ideal am Regal oder direkt in der Kueche, wenn Produkte schnell ein- und ausgelagert werden sollen.</p>
+        </article>
+        <article class="help-card">
+            <strong>Barcode scannen</strong>
+            <p>Praktisch fuer Einzelpruefungen, manuelle Korrekturen und direkte Buchungen nach einem gezielten Scan.
+            </p>
+        </article>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hausinventar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='inventory_theme.css') }}">
+</head>
+
+<body class="{{ body_class or '' }}">
+    <div class="page-shell">
+        <!-- Linke Navigation: bleibt auf allen Seiten gleich. -->
+        <aside class="sidebar">
+            <a class="brand" href="{{ url_for('index') }}">Hausinventar</a>
+            <nav class="nav-links">
+                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('scanner_page') }}">Scanner</a>
+                <a href="{{ url_for('products_page') }}">Produktverwaltung</a>
+                <a href="{{ url_for('new_product') }}">Produkt anlegen</a>
+                <a href="{{ url_for('shopping_list') }}">Einkaufsliste</a>
+                <a href="{{ url_for('expiry_page') }}">Haltbarkeitsdatum</a>
+                <a href="{{ url_for('categories') }}">Kategorien</a>
+            </nav>
+            <div class="sidebar-bottom">
+                <p class="sidebar-note">Optimiert fuer Raspberry Pi 3, USB-Barcodescanner und lokale Nutzung im Browser.
+                </p>
+                <div class="sidebar-panel">
+                    <strong>Neu: Haltbarkeitsdatum</strong>
+                    <span>Produkte koennen jetzt mit MHD-Pflicht markiert werden. Ablaufwarnungen erscheinen im
+                        Dashboard und in der neuen MHD-Uebersicht.</span>
+                </div>
+                <a class="sidebar-help-link" href="{{ url_for('help_page') }}">Hilfe und Einstieg</a>
+                <a class="sidebar-help-link sidebar-danger-link"
+                    href="{{ url_for('developer_mode') }}">Entwicklermodus</a>
+            </div>
+        </aside>
+
+        <main class="content">
+            <!-- Flash-Nachrichten fuer Erfolg, Fehler und Hinweise. -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <section class="flash-list">
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </section>
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        (() => {
+            const storageKey = "inventory-scroll-restore";
+
+            function saveScrollPosition() {
+                sessionStorage.setItem(storageKey, JSON.stringify({
+                    path: window.location.pathname,
+                    scrollX: window.scrollX,
+                    scrollY: window.scrollY,
+                    timestamp: Date.now(),
+                }));
+            }
+
+            function restoreScrollPosition(savedState) {
+                const applyScroll = () => window.scrollTo(savedState.scrollX || 0, savedState.scrollY || 0);
+                applyScroll();
+                requestAnimationFrame(applyScroll);
+                window.setTimeout(applyScroll, 120);
+            }
+
+            try {
+                if ("scrollRestoration" in history) {
+                    history.scrollRestoration = "manual";
+                }
+            } catch (error) {
+                // Manche Browser erlauben keine manuelle Steuerung. Dann bleibt das Standardverhalten aktiv.
+            }
+
+            const rawSavedState = sessionStorage.getItem(storageKey);
+            if (rawSavedState) {
+                try {
+                    const savedState = JSON.parse(rawSavedState);
+                    const isFreshEnough = Date.now() - Number(savedState.timestamp || 0) < 15000;
+                    if (savedState.path === window.location.pathname && isFreshEnough) {
+                        window.addEventListener("load", () => restoreScrollPosition(savedState), { once: true });
+                    }
+                } catch (error) {
+                    // Ungueltige Werte werden einfach verworfen.
+                }
+                sessionStorage.removeItem(storageKey);
+            }
+
+            document.addEventListener("submit", (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+                if (form.dataset.disableScrollRestore === "1") {
+                    return;
+                }
+                saveScrollPosition();
+            }, true);
+        })();
+    </script>
+</body>
+
+</html>

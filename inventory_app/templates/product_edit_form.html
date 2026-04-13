@@ -1,0 +1,285 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- Formular fuer neue Produkte und fuer die Bearbeitung bestehender Produkte. -->
+<section class="panel">
+    <div class="section-head">
+        <div>
+            <p class="eyebrow">Produktdaten</p>
+            <h1>{% if is_new %}Neues Produkt{% else %}Produkt bearbeiten{% endif %}</h1>
+            <p class="lead">{% if is_new %}Hier legst du einen neuen Artikel mit Barcode, Bestand, Kategorie und
+                optionalem Haltbarkeitsdatum an.{% else %}Hier passt du Stammdaten, Bestandseinstellungen und
+                Zusatzinformationen des Produkts an.{% endif %}</p>
+        </div>
+        {% if not is_new %}
+        <a class="button-link secondary" href="{{ url_for('product_detail', product_id=product.id) }}">Zurueck</a>
+        {% endif %}
+    </div>
+
+    <div class="category-hub-grid form-hub-grid">
+        <a class="hub-card" href="#product-form-basics">
+            <strong>Grunddaten</strong>
+            <span>Name, Barcode, SKU und erste Erkennung.</span>
+            <small>Pflichtbereich</small>
+        </a>
+        <a class="hub-card" href="#product-form-stock">
+            <strong>Kategorie und Bestand</strong>
+            <span>Lebensmittelart, Lagerort, Mengen, Einkaufskategorien und MHD-Regel.</span>
+            <small>Stammdaten</small>
+        </a>
+        <a class="hub-card" href="#product-form-notes">
+            <strong>Notizen und Zusatzattribute</strong>
+            <span>Freitext und weitere Produktinformationen separat pflegen.</span>
+            <small>Optional</small>
+        </a>
+    </div>
+
+    <form class="product-form form-accordion-group" method="post">
+        {% if is_new and scanner_context.is_active %}
+        <div class="scanner-origin-card">
+            <strong>Barcode aus dem Scanner-Alltag erkannt</strong>
+            {% if scanner_context.action == 'in' %}
+            <p class="subtle">Nach dem Speichern wird automatisch eine Einlagerung von 1 {{ product.unit or 'Stk' }}
+                gebucht.</p>
+            {% else %}
+            <p class="subtle">Dieser Barcode war beim Auslagern noch unbekannt. Nach dem Speichern ist der Artikel fuer
+                kuenftige Scan-Aktionen verfuegbar.</p>
+            {% endif %}
+        </div>
+        <input type="hidden" name="scanner_mode" value="1">
+        <input type="hidden" name="scanner_action" value="{{ scanner_context.action }}">
+        {% endif %}
+        <details class="panel category-accordion" id="product-form-basics" open>
+            <summary>
+                <div>
+                    <p class="eyebrow">Formular</p>
+                    <h2>Grunddaten</h2>
+                    <p class="subtle">Die wichtigsten Identifikationsdaten bleiben im ersten, offenen Bereich.</p>
+                </div>
+            </summary>
+            <div class="category-accordion-body">
+                <div class="field-grid">
+                    <label class="{% if 'name' in lookup_updated_fields %}lookup-field-updated{% endif %}">
+                        Produktname
+                        {% if 'name' in lookup_updated_fields %}
+                        <span class="lookup-badge">Automatisch ergaenzt</span>
+                        {% endif %}
+                        <input name="name" required value="{{ product.name or '' }}">
+                    </label>
+                    <div class="field-span barcode-lookup-row">
+                        <label>
+                            Barcode (Primaercode)
+                            <input name="barcode" value="{{ product.barcode or '' }}">
+                        </label>
+                        {% if is_new %}
+                        <div class="barcode-lookup-actions">
+                            <button type="submit" name="form_action" value="lookup_barcode" class="secondary"
+                                formnovalidate>Barcode online suchen</button>
+                            <p class="subtle">Sucht bekannte Produktdaten zuerst bei Open Food Facts und danach bei Open
+                                Beauty Facts. Vorhandene Eingaben bleiben erhalten.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if is_new %}
+                    <div class="field-span lookup-preview">
+                        <strong>Alternativ vorhandenes Produkt waehlen</strong>
+                        <p class="subtle">Wenn der neue Barcode zu einem bereits bekannten Artikel gehoert, kannst du
+                            ihn hier direkt zuordnen statt einen neuen Artikel anzulegen.</p>
+                        <div class="field-grid">
+                            <label class="field-span">
+                                Bestehendes Produkt
+                                <select name="existing_product_id">
+                                    <option value="">Bitte waehlen</option>
+                                    {% for existing_product in existing_products %}
+                                    <option value="{{ existing_product.id }}" {% if
+                                        product.existing_product_id==existing_product.id|string %}selected{% endif %}>
+                                        {{ existing_product.name }}{% if existing_product.barcode %} | {{
+                                        existing_product.barcode }}{% endif %}{% if existing_product.sku %} | {{
+                                        existing_product.sku }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" name="form_action" value="assign_existing_product" class="secondary"
+                                formnovalidate>Barcode bestehendem Produkt zuordnen</button>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <label>
+                        SKU / Artikelnummer
+                        <input name="sku" value="{{ product.sku or '' }}">
+                    </label>
+                    {% if lookup_result %}
+                    <div class="field-span lookup-preview">
+                        <strong>Online gefunden in {{ lookup_result.source }}</strong>
+                        {% if lookup_updated_fields %}
+                        <p class="subtle">Automatisch ergaenzte Formularfelder sind markiert.</p>
+                        {% endif %}
+                        <div class="lookup-preview-grid">
+                            <span><strong>Name:</strong> {{ lookup_result.name }}</span>
+                            {% if lookup_result.brand %}
+                            <span><strong>Marke:</strong> {{ lookup_result.brand }}</span>
+                            {% endif %}
+                            {% if lookup_result.quantity %}
+                            <span><strong>Packungsangabe:</strong> {{ lookup_result.quantity }}</span>
+                            {% endif %}
+                            {% if lookup_result.category_hint %}
+                            <span><strong>Kategoriehinweis:</strong> {{ lookup_result.category_hint }}</span>
+                            {% endif %}
+                        </div>
+                        {% if lookup_result.searched_sources %}
+                        <p class="subtle">Gepruefte Quellen: {{ lookup_result.searched_sources|join(', ') }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+
+        <details class="panel category-accordion" id="product-form-stock" open>
+            <summary>
+                <div>
+                    <p class="eyebrow">Formular</p>
+                    <h2>Kategorie und Bestand</h2>
+                    <p class="subtle">Kategorien, Lagerort und Mengen sind in einem zweiten Block gebuendelt.</p>
+                </div>
+            </summary>
+            <div class="category-accordion-body">
+                <div class="field-grid">
+                    <label>
+                        Lebensmittelart
+                        <select id="product_category_id" name="product_category_id">
+                            <option value="">Bitte waehlen</option>
+                            {% for category in product_categories %}
+                            <option value="{{ category.id }}" {% if product.product_category_id==category.id or
+                                product.product_category_id|string==category.id|string %}selected{% endif %}>{{
+                                category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        Neue Lebensmittelart
+                        <input id="new_product_category" name="new_product_category" list="product-category-suggestions"
+                            value="{{ product.new_product_category or '' }}" placeholder="z.B. Nudeln">
+                    </label>
+                    <label>
+                        Lagerort
+                        <input name="storage_location" value="{{ product.storage_location or '' }}">
+                    </label>
+                    <label>
+                        Einheit
+                        <input name="unit" value="{{ product.unit or 'Stk' }}">
+                    </label>
+                    <label>
+                        Soll-Anzahl
+                        <input name="target_quantity" type="number" min="0" value="{{ product.target_quantity or 0 }}">
+                    </label>
+                    <label>
+                        Ist-Anzahl
+                        <input name="current_quantity" type="number" min="0" value="{{ product.current_quantity or 0 }}"
+                            {% if not is_new %}disabled{% endif %}>
+                    </label>
+                    <label>
+                        Mindestbestand
+                        <input name="min_quantity" type="number" min="0" value="{{ product.min_quantity or 0 }}">
+                    </label>
+                    <label class="field-span expiry-required-field">
+                        <span>Haltbarkeitsdatum erforderlich</span>
+                        <div class="expiry-required-toggle">
+                            <input type="checkbox" name="requires_expiry_date" value="1" {% if
+                                product.requires_expiry_date %}checked{% endif %}>
+                            <span class="subtle">Beim Einlagern wird zusaetzlich ein Haltbarkeitsdatum abgefragt.</span>
+                        </div>
+                    </label>
+                    <div class="field-span category-summary">
+                        <strong>Zugeordnete Einkaufskategorien</strong>
+                        <p id="linked-shopping-hint" class="subtle">
+                            {% if linked_shopping_categories %}
+                            {{ linked_shopping_categories|join(', ') }}
+                            {% else %}
+                            Noch keiner Einkaufskategorie zugeordnet. Das kannst du im Bereich Kategorien festlegen.
+                            {% endif %}
+                        </p>
+                        <a class="button-link secondary tag-button" href="{{ url_for('categories') }}">Kategorien
+                            verwalten</a>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="panel category-accordion" id="product-form-notes">
+            <summary>
+                <div>
+                    <p class="eyebrow">Formular</p>
+                    <h2>Notizen und Zusatzattribute</h2>
+                    <p class="subtle">Seltener benoetigte Felder sitzen in einem eigenen Untermenue und nehmen nicht
+                        mehr dauerhaft Platz weg.</p>
+                </div>
+            </summary>
+            <div class="category-accordion-body">
+                <label>
+                    Notizen
+                    <textarea name="notes" rows="4">{{ product.notes or '' }}</textarea>
+                </label>
+
+                <label class="{% if 'extra_attributes' in lookup_updated_fields %}lookup-field-updated{% endif %}">
+                    Zusatzattribute
+                    {% if 'extra_attributes' in lookup_updated_fields %}
+                    <span class="lookup-badge">Automatisch ergaenzt{% if lookup_updated_attribute_keys %}: {{
+                        lookup_updated_attribute_keys|join(', ') }}{% endif %}</span>
+                    {% endif %}
+                    <textarea name="extra_attributes" rows="6"
+                        placeholder="Hersteller: Beispiel GmbH&#10;MHD: 2026-12-31&#10;Farbe: Rot">{{ product.extra_attributes or '' }}</textarea>
+                </label>
+            </div>
+        </details>
+
+        <div class="form-actions">
+            <button type="submit">Speichern</button>
+        </div>
+
+        <datalist id="product-category-suggestions">
+            {% for category in product_category_suggestions %}
+            <option value="{{ category }}"></option>
+            {% endfor %}
+        </datalist>
+    </form>
+</section>
+
+<script>
+    (function () {
+        const select = document.getElementById("product_category_id");
+        const newCategoryInput = document.getElementById("new_product_category");
+        const hint = document.getElementById("linked-shopping-hint");
+        const categories = {{ product_categories| tojson
+    }};
+
+    function updateHint() {
+        if (!hint) {
+            return;
+        }
+
+        if (newCategoryInput?.value.trim()) {
+            hint.textContent = "Neue Lebensmittelart wird nach dem Speichern in die Schnellauswahl aufgenommen und kann danach Einkaufskategorien zugeordnet werden.";
+            return;
+        }
+
+        const selectedId = select?.value || "";
+        const selectedCategory = categories.find((category) => String(category.id) === selectedId);
+
+        if (!selectedCategory || !selectedCategory.shopping_categories.length) {
+            hint.textContent = "Noch keiner Einkaufskategorie zugeordnet. Das kannst du im Bereich Kategorien festlegen.";
+            return;
+        }
+
+        hint.textContent = selectedCategory.shopping_categories.join(", ");
+    }
+
+    select?.addEventListener("change", updateHint);
+    newCategoryInput?.addEventListener("input", updateHint);
+    updateHint();
+    }) ();
+</script>
+{% endblock %}

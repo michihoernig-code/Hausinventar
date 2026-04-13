@@ -1,0 +1,336 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Produktverwaltung</p>
+        <h1>Produkte suchen, pflegen und gesammelt bearbeiten.</h1>
+        <p class="lead">Hier liegt die komplette Produktliste mit Suche, Massenbearbeitung und direktem Einstieg in die
+            Detailseiten.</p>
+    </div>
+    <div class="detail-actions">
+        <a class="button-link" href="{{ url_for('new_product') }}">Neues Produkt</a>
+        <a class="button-link secondary" href="#product-search">Suche oeffnen</a>
+    </div>
+</section>
+
+<section class="stats-grid compact">
+    <article class="stat-card">
+        <span>Treffer</span>
+        <strong>{{ product_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Gesamtbestand</span>
+        <strong>{{ total_units }}</strong>
+    </article>
+    <article class="stat-card warning">
+        <span>Unter Mindestbestand</span>
+        <strong>{{ low_stock_count }}</strong>
+    </article>
+</section>
+
+<section class="panel category-overview-panel">
+    <div class="section-head compact-head">
+        <div>
+            <h2>Bereiche</h2>
+            <p class="subtle">Die Produktverwaltung ist in wenige, klare Bereiche aufgeteilt. Du siehst sofort alle
+                Optionen und oeffnest nur den Abschnitt, den du gerade brauchst.</p>
+        </div>
+    </div>
+    <div class="category-hub-grid">
+        <a class="hub-card" href="#product-search">
+            <strong>Suche und Filter</strong>
+            <span>Liste eingrenzen und schneller zum passenden Produkt springen.</span>
+            <small>{% if search %}Aktiver Filter{% else %}Keine Suche aktiv{% endif %}</small>
+        </a>
+        <a class="hub-card" href="#product-bulk-edit">
+            <strong>Sammelbearbeitung</strong>
+            <span>Mehrere Produkte gemeinsam anpassen, ohne jede Detailseite einzeln zu oeffnen.</span>
+            <small>Kategorie, Ort, Einheit, Zielwerte</small>
+        </a>
+        <a class="hub-card" href="#product-table">
+            <strong>Produktliste</strong>
+            <span>Bestand, Differenzen und direkte Einstiege in die Detailseiten.</span>
+            <small>{{ product_count }} Treffer</small>
+        </a>
+        <a class="hub-card" href="{{ url_for('new_product') }}">
+            <strong>Neues Produkt anlegen</strong>
+            <span>Direkter Einstieg fuer neue Artikel mit Barcode, Kategorie und Lagerort.</span>
+            <small>Sofortformular</small>
+        </a>
+    </div>
+</section>
+
+<details class="panel category-accordion" id="product-search" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Schnellzugriff</p>
+            <h2>Suche und Filter</h2>
+            <p class="subtle">Die Suche ist separat erreichbar und ueberlagert nicht mehr dauerhaft die gesamte
+                Produktseite.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ product_count }} Treffer</span>
+            {% if search %}
+            <span class="status-pill">Filter: {{ search }}</span>
+            {% else %}
+            <span class="status-pill">Keine aktive Suche</span>
+            {% endif %}
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="category-subpanel">
+            <form class="search-inline-form" method="get">
+                <label for="q">
+                    Suche
+                    <input id="q" name="q" type="search" placeholder="Name, Barcode, SKU oder Kategorie"
+                        value="{{ search }}">
+                </label>
+                <div class="form-actions">
+                    <button type="submit">Filtern</button>
+                    {% if search %}
+                    <a class="button-link secondary" href="{{ url_for('products_page') }}">Filter zuruecksetzen</a>
+                    {% endif %}
+                </div>
+            </form>
+            <div class="filter-summary-row">
+                <div class="category-summary">
+                    <strong>Aktueller Umfang</strong>
+                    <p>{% if search %}Es werden nur Produkte passend zu "{{ search }}" angezeigt.{% else %}Es werden
+                        aktuell alle Produkte angezeigt.{% endif %}</p>
+                </div>
+                <div class="category-summary">
+                    <strong>Direkter Einstieg</strong>
+                    <p>Nutze die Sammelbearbeitung fuer wiederkehrende Stammdaten oder oeffne einzelne Produkte in der
+                        Liste.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
+
+<form class="product-form" id="bulk-update-form" method="post" action="{{ url_for('bulk_update_products_route') }}">
+    <input type="hidden" name="search" value="{{ search }}">
+
+    <details class="panel category-accordion" id="product-bulk-edit">
+        <summary>
+            <div>
+                <p class="eyebrow">Untermenue</p>
+                <h2>Produkte gesammelt bearbeiten</h2>
+                <p class="subtle">Die Massenbearbeitung bleibt erreichbar, nimmt aber nur noch Platz ein, wenn du sie
+                    wirklich brauchst.</p>
+            </div>
+            <div class="accordion-meta">
+                <span class="status-pill" data-selected-products-count>0 Produkte ausgewaehlt</span>
+            </div>
+        </summary>
+        <div class="category-accordion-body">
+            <div class="detail-grid categories-layout">
+                <label>
+                    Neue Lebensmittelart
+                    <select name="product_category_id">
+                        <option value="">Unveraendert lassen</option>
+                        {% for category in bulk_product_categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Neuer Lagerort
+                    <input name="storage_location" placeholder="leer = unveraendert">
+                </label>
+                <label>
+                    Neue Einheit
+                    <input name="unit" placeholder="z.B. Stk, Packung, g">
+                </label>
+                <label>
+                    Neuer Soll-Bestand
+                    <input name="target_quantity" type="number" min="0" placeholder="leer = unveraendert">
+                </label>
+                <label>
+                    Neuer Mindestbestand
+                    <input name="min_quantity" type="number" min="0" placeholder="leer = unveraendert">
+                </label>
+                <label>
+                    Haltbarkeitsdatum
+                    <select name="requires_expiry_date">
+                        <option value="">Unveraendert lassen</option>
+                        <option value="yes">Erforderlich</option>
+                        <option value="no">Nicht erforderlich</option>
+                    </select>
+                </label>
+                <label class="field-span">
+                    Notiz ersetzen
+                    <textarea name="notes" rows="3" placeholder="leer = unveraendert"></textarea>
+                </label>
+            </div>
+            <p class="subtle">Markiere Produkte in der Tabelle und wende dann die gewuenschten Aenderungen gesammelt an.
+            </p>
+            <div class="form-actions">
+                <button type="button" class="secondary" id="select-visible-products">Alle sichtbaren auswaehlen</button>
+                <span class="subtle" data-selected-products-count>0 Produkte ausgewaehlt</span>
+                <button type="submit">Ausgewaehlte Produkte aktualisieren</button>
+            </div>
+        </div>
+    </details>
+
+</form>
+
+<details class="panel category-accordion" id="product-table" open>
+    <summary>
+        <div>
+            <p class="eyebrow">Verwaltung</p>
+            <h2>Produktliste</h2>
+            <p class="subtle">Lebensmittelart, Einkaufskategorie und MHD-Pflicht koennen jetzt direkt pro Zeile gepflegt
+                werden.</p>
+        </div>
+        <div class="accordion-meta">
+            <span class="status-pill">{{ product_count }} Treffer</span>
+            <span class="status-pill warning-pill">{{ low_stock_count }} kritisch</span>
+        </div>
+    </summary>
+    <div class="category-accordion-body">
+        <div class="section-head compact-head">
+            <div class="table-meta-grid">
+                <div class="category-summary">
+                    <strong>Gesamtbestand</strong>
+                    <p>{{ total_units }} Einheiten ueber alle sichtbaren Produkte.</p>
+                </div>
+                <div class="category-summary">
+                    <strong>Auswahlstatus</strong>
+                    <p data-selected-products-count>0 Produkte ausgewaehlt</p>
+                </div>
+            </div>
+            <a class="button-link" href="{{ url_for('new_product') }}">Neues Produkt</a>
+        </div>
+        <div class="category-summary">
+            <strong>Hinweis zur Einkaufskategorie</strong>
+            <p>Die Einkaufskategorie gilt fuer die gewaehlte Lebensmittelart. Wenn du sie hier setzt, wird die
+                Verknuepfung auch fuer andere Produkte mit derselben Lebensmittelart verwendet.</p>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Auswahl</th>
+                        <th>Produkt</th>
+                        <th>Barcode</th>
+                        <th>Kategorien und MHD</th>
+                        <th>Ort</th>
+                        <th>Ist</th>
+                        <th>Soll</th>
+                        <th>Differenz</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr id="product-row-{{ product.id }}">
+                        <td class="selection-cell">
+                            <input type="checkbox" form="bulk-update-form" name="product_ids" value="{{ product.id }}">
+                        </td>
+                        <td>
+                            <strong>{{ product.name }}</strong>
+                            <div class="subtle">{{ product.sku or 'Ohne SKU' }}</div>
+                        </td>
+                        <td>{{ product.barcode_label or '-' }}</td>
+                        <td class="product-list-category-cell">
+                            <form class="product-list-category-form" method="post"
+                                action="{{ url_for('update_product_categories_from_list_route', product_id=product.id) }}">
+                                <input type="hidden" name="search" value="{{ search }}">
+                                <label class="product-list-category-field">
+                                    <span>Lebensmittelart</span>
+                                    <select name="product_category_id" required>
+                                        <option value="">Bitte waehlen</option>
+                                        {% for category in bulk_product_categories %}
+                                        <option value="{{ category.id }}" {% if product.product_category_id==category.id
+                                            or product.product_category_id|string==category.id|string %}selected{% endif
+                                            %}>
+                                            {{ category.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label class="product-list-category-field">
+                                    <span>Einkaufskategorie</span>
+                                    <select name="shopping_category_id">
+                                        <option value="">{% if product.shopping_category_label %}Aktuelle Zuordnung
+                                            behalten{% else %}Optional verknuepfen{% endif %}</option>
+                                        {% for category in shopping_categories %}
+                                        <option value="{{ category.id }}" {% if
+                                            product.primary_shopping_category_id==category.id %}selected{% endif %}>
+                                            {{ category.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label class="product-list-checkbox-row">
+                                    <input type="checkbox" name="requires_expiry_date" value="1" {% if
+                                        product.requires_expiry_date %}checked{% endif %}>
+                                    <span>MHD bei Einlagerung erforderlich</span>
+                                </label>
+                                <div class="product-list-category-actions">
+                                    <button type="submit">Kategorien speichern</button>
+                                    <a href="{{ url_for('product_detail', product_id=product.id) }}">Oeffnen</a>
+                                </div>
+                                <p class="subtle product-list-category-note">
+                                    {% if product.shopping_category_label %}Aktuell verknuepft: {{
+                                    product.shopping_category_label }}.{% else %}Noch keine Einkaufskategorie
+                                    verknuepft.{% endif %}
+                                    {% if product.requires_expiry_date %}
+                                    MHD-Status: {{ product.expiry_status_label }}{% if product.next_expiry_display %} |
+                                    Naechstes MHD {{ product.next_expiry_display }}{% endif %}.
+                                    {% endif %}
+                                </p>
+                            </form>
+                        </td>
+                        <td>{{ product.storage_location or '-' }}</td>
+                        <td>{{ product.current_quantity }} {{ product.unit }}</td>
+                        <td>{{ product.target_quantity }} {{ product.unit }}</td>
+                        <td
+                            class="{% if product.difference_quantity > 0 %}text-warning{% elif product.difference_quantity < 0 %}text-success{% endif %}">
+                            {{ product.difference_quantity }} {{ product.unit }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="empty-state">Noch keine Produkte vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<script>
+    (function () {
+        const toggleButton = document.getElementById("select-visible-products");
+        const countLabels = Array.from(document.querySelectorAll("[data-selected-products-count]"));
+        const checkboxes = Array.from(document.querySelectorAll('input[name="product_ids"]'));
+
+        function updateSelectedCount() {
+            const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+            countLabels.forEach((label) => {
+                label.textContent = `${selectedCount} Produkte ausgewaehlt`;
+            });
+            if (toggleButton) {
+                toggleButton.textContent = selectedCount === checkboxes.length && checkboxes.length > 0
+                    ? "Auswahl aufheben"
+                    : "Alle sichtbaren auswaehlen";
+            }
+        }
+
+        function toggleSelection() {
+            const shouldSelectAll = checkboxes.some((checkbox) => !checkbox.checked);
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = shouldSelectAll;
+            });
+            updateSelectedCount();
+        }
+
+        checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateSelectedCount));
+        toggleButton?.addEventListener("click", toggleSelection);
+        updateSelectedCount();
+    })();
+</script>
+{% endblock %}

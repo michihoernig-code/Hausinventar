@@ -126,6 +126,14 @@ label {
     text-decoration: none;
 }
 
+.mobile-nav {
+    margin-bottom: 0.2rem;
+}
+
+.mobile-nav>summary {
+    display: none;
+}
+
 .nav-links {
     display: grid;
     gap: 0.7rem;
@@ -1371,6 +1379,52 @@ td {
         overflow-y: visible;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 1rem;
+        gap: 0.8rem;
+    }
+
+    .sidebar-bottom {
+        margin-top: 0.6rem;
+    }
+
+    .mobile-nav {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        background: rgba(255, 250, 244, 0.12);
+        padding: 0.5rem 0.6rem;
+    }
+
+    .mobile-nav>summary {
+        display: block;
+        cursor: pointer;
+        color: #f6ecdf;
+        font-weight: 700;
+        list-style: none;
+        text-align: center;
+    }
+
+    .mobile-nav>summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .mobile-nav>summary::before {
+        content: "Menue anzeigen";
+    }
+
+    .mobile-nav[open]>summary::before {
+        content: "Menue ausblenden";
+    }
+
+    .mobile-nav>.nav-links {
+        margin-top: 0.6rem;
+    }
+
+    .mobile-nav>.nav-links a {
+        text-align: center;
+    }
+
+    .mobile-nav:not([open])>.nav-links {
+        display: none;
     }
 
     .hero,
@@ -1379,6 +1433,41 @@ td {
     .section-head {
         align-items: start;
         flex-direction: column;
+    }
+
+    .content {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .hero,
+    .scanner-hero,
+    .panel,
+    .table-card,
+    .detail-header {
+        border-radius: 22px;
+        padding: 1.1rem;
+        overflow: hidden;
+    }
+
+    .section-head {
+        margin-bottom: 0.75rem;
+    }
+
+    input,
+    textarea,
+    select,
+    button,
+    .button-link {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .detail-actions,
+    .form-actions,
+    .table-actions {
+        display: grid;
+        grid-template-columns: 1fr;
     }
 
     .stats-grid,
@@ -1414,5 +1503,11 @@ td {
 
     .expiry-modal {
         padding: 1rem;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
     }
 }

@@ -6,10 +6,12 @@ Paket inventory_app verwendet. Deshalb wurde sie nicht umbenannt.
 
 import smtplib
 import ssl
+import json
 from email.message import EmailMessage
 from email.utils import parseaddr
+from pathlib import Path
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
 from .database import init_app
 from .inventory_logic import (
@@ -47,6 +49,28 @@ from .inventory_logic import (
 )
 
 
+MOBILE_UA_HINTS = (
+    "android",
+    "iphone",
+    "ipad",
+    "ipod",
+    "mobile",
+    "blackberry",
+    "windows phone",
+    "opera mini",
+    "iemobile",
+    "kindle",
+    "silk",
+)
+
+
+def _is_mobile_request() -> bool:
+    user_agent = str(request.headers.get("User-Agent", "")).lower()
+    if not user_agent:
+        return False
+    return any(token in user_agent for token in MOBILE_UA_HINTS)
+
+
 def create_app() -> Flask:
     """Erzeugt und konfiguriert die Flask-Anwendung."""
     app = Flask(__name__, instance_relative_config=True)
@@ -66,6 +90,144 @@ def create_app() -> Flask:
     app.config.from_prefixed_env(prefix="INVENTORY")
 
     init_app(app)
+
+    @app.context_processor
+    def inject_device_flags() -> dict:
+        is_mobile_device = _is_mobile_request()
+        return {
+            "is_mobile_device": is_mobile_device,
+            "device_class": "device-mobile" if is_mobile_device else "device-desktop",
+        }
+
+    alerts_settings_path = Path(app.instance_path) / "alerts_settings.json"
+
+    def default_alert_settings() -> dict:
+        return {
+            "version": 1,
+            "signals": {
+                "low_stock": {"enabled": True, "threshold": 0},
+                "expired_items": {"enabled": True, "threshold": 0},
+                "expiring_soon": {"enabled": True, "threshold": 0},
+                "missing_expiry": {"enabled": False, "threshold": 0},
+            },
+        }
+
+    def load_alert_settings() -> dict:
+        defaults = default_alert_settings()
+        alerts_settings_path.parent.mkdir(parents=True, exist_ok=True)
+        if not alerts_settings_path.exists():
+            alerts_settings_path.write_text(json.dumps(defaults, indent=2, ensure_ascii=True), encoding="utf-8")
+            return defaults
+
+        try:
+            raw = json.loads(alerts_settings_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return defaults
+
+        signals = raw.get("signals") if isinstance(raw, dict) else None
+        if not isinstance(signals, dict):
+            return defaults
+
+        for signal_id, defaults_value in defaults["signals"].items():
+            source = signals.get(signal_id)
+            if not isinstance(source, dict):
+                continue
+            defaults_value["enabled"] = bool(source.get("enabled", defaults_value["enabled"]))
+            try:
+                defaults_value["threshold"] = int(float(source.get("threshold", defaults_value["threshold"])))
+            except (TypeError, ValueError):
+                pass
+
+        return defaults
+
+    def save_alert_settings(settings: dict) -> dict:
+        normalized = default_alert_settings()
+        source_signals = settings.get("signals") if isinstance(settings, dict) else None
+        if isinstance(source_signals, dict):
+            for signal_id, defaults_value in normalized["signals"].items():
+                source = source_signals.get(signal_id)
+                if not isinstance(source, dict):
+                    continue
+                defaults_value["enabled"] = bool(source.get("enabled", defaults_value["enabled"]))
+                try:
+                    defaults_value["threshold"] = int(float(source.get("threshold", defaults_value["threshold"])))
+                except (TypeError, ValueError):
+                    pass
+
+        alerts_settings_path.parent.mkdir(parents=True, exist_ok=True)
+        alerts_settings_path.write_text(json.dumps(normalized, indent=2, ensure_ascii=True), encoding="utf-8")
+        return normalized
+
+    def build_alert_payload() -> dict:
+        dashboard = get_dashboard_data()
+        settings = load_alert_settings()
+        signals = settings["signals"]
+
+        low_stock_count = int(dashboard.get("low_stock_count", 0))
+        expired_count = int(dashboard.get("expiry_expired_count", 0))
+        expiring_soon_count = int(dashboard.get("expiry_soon_count", 0))
+        missing_expiry_count = int(dashboard.get("expiry_missing_count", 0))
+
+        alerts = []
+        if signals["low_stock"]["enabled"] and low_stock_count > int(signals["low_stock"]["threshold"]):
+            alerts.append(
+                {
+                    "id": "low_stock",
+                    "severity": "warning",
+                    "title": "Artikel unter Mindestbestand",
+                    "message": f"{low_stock_count} Artikel sind am oder unter dem Mindestbestand.",
+                }
+            )
+
+        if signals["expired_items"]["enabled"] and expired_count > int(signals["expired_items"]["threshold"]):
+            alerts.append(
+                {
+                    "id": "expired_items",
+                    "severity": "critical",
+                    "title": "Abgelaufene Artikel",
+                    "message": f"{expired_count} Artikel sind bereits abgelaufen.",
+                }
+            )
+
+        if signals["expiring_soon"]["enabled"] and expiring_soon_count > int(signals["expiring_soon"]["threshold"]):
+            alerts.append(
+                {
+                    "id": "expiring_soon",
+                    "severity": "warning",
+                    "title": "MHD bald faellig",
+                    "message": f"{expiring_soon_count} Artikel laufen bald ab.",
+                }
+            )
+
+        if signals["missing_expiry"]["enabled"] and missing_expiry_count > int(signals["missing_expiry"]["threshold"]):
+            alerts.append(
+                {
+                    "id": "missing_expiry",
+                    "severity": "info",
+                    "title": "MHD fehlt",
+                    "message": f"{missing_expiry_count} Artikel haben kein Haltbarkeitsdatum.",
+                }
+            )
+
+        summary = {"total": len(alerts), "critical": 0, "warning": 0, "info": 0}
+        for item in alerts:
+            level = str(item.get("severity", "warning")).lower()
+            if level in summary:
+                summary[level] += 1
+
+        return {
+            "system": "inventory",
+            "summary": summary,
+            "alerts": alerts,
+            "settings": settings,
+            "context": {
+                "product_count": int(dashboard.get("product_count", 0)),
+                "low_stock_count": low_stock_count,
+                "expiry_soon_count": expiring_soon_count,
+                "expiry_expired_count": expired_count,
+                "expiry_missing_count": missing_expiry_count,
+            },
+        }
 
     @app.route("/help")
     def help_page():
@@ -95,6 +257,57 @@ def create_app() -> Flask:
         # Dashboard zeigt nur noch die Uebersicht und schnelle Einstiege.
         dashboard = get_dashboard_data()
         return render_template("dashboard.html", **dashboard)
+
+    @app.route("/alerts", methods=("GET", "POST"))
+    def alerts_page():
+        if request.method == "POST":
+            incoming = default_alert_settings()
+            for signal_id, defaults_value in incoming["signals"].items():
+                incoming["signals"][signal_id]["enabled"] = f"{signal_id}_enabled" in request.form
+                raw_threshold = request.form.get(f"{signal_id}_threshold", str(defaults_value["threshold"]))
+                try:
+                    incoming["signals"][signal_id]["threshold"] = int(float(raw_threshold))
+                except (TypeError, ValueError):
+                    pass
+            save_alert_settings(incoming)
+            flash("Meldungsoptionen wurden gespeichert.", "success")
+            return redirect(url_for("alerts_page"))
+
+        payload = build_alert_payload()
+        return render_template("alerts_page.html", alert_payload=payload)
+
+    @app.get("/api/alerts-summary")
+    def alerts_summary():
+        # Kompakte Kennzahlen fuer externe Leitstellen und Monitorings.
+        dashboard = get_dashboard_data()
+        low_stock_products = list(dashboard.get("low_stock_products", []))
+        expiry_alert_products = list(dashboard.get("expiry_alert_products", []))
+
+        return jsonify(
+            {
+                "product_count": int(dashboard.get("product_count", 0)),
+                "low_stock_count": int(dashboard.get("low_stock_count", 0)),
+                "low_stock_samples": [str(item.get("name", "")) for item in low_stock_products[:5]],
+                "expiry_soon_count": int(dashboard.get("expiry_soon_count", 0)),
+                "expiry_expired_count": int(dashboard.get("expiry_expired_count", 0)),
+                "expiry_missing_count": int(dashboard.get("expiry_missing_count", 0)),
+                "expiry_alert_samples": [str(item.get("name", "")) for item in expiry_alert_products[:5]],
+            }
+        )
+
+    @app.get("/api/alerts")
+    def alerts_feed():
+        return jsonify(build_alert_payload())
+
+    @app.get("/api/alerts/settings")
+    def alerts_settings_api():
+        return jsonify(load_alert_settings())
+
+    @app.post("/api/alerts/settings")
+    def save_alerts_settings_api():
+        payload = request.get_json(silent=True) or {}
+        settings = save_alert_settings(payload)
+        return jsonify({"ok": True, "settings": settings})
 
     @app.route("/scanner")
     def scanner_page():

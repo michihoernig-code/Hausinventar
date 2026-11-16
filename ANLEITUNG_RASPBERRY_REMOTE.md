@@ -192,7 +192,7 @@ Wenn du direkt per Remote SSH verbunden bist, kannst du die Dateien einfach in d
 Oeffne auf dem Laptop PowerShell und fuehre aus:
 
 ```powershell
-scp -r "C:\Users\michi\OneDrive\Dokumente\Andere Dateien\Technikprojekte\Hausinventar" pi@192.168.178.75:~/projekte/
+scp -r "C:\Users\michi\OneDrive\Dokumente\Andere Dateien\Technikprojekte\Hausinventar" michi@192.168.178.75:~/projekte/
 ```
 
 Wenn dein Benutzer auf dem Raspberry nicht `pi` heisst, ersetze `pi` durch deinen echten Benutzernamen.
@@ -248,7 +248,7 @@ Danach verbindest du dein lokales Projekt mit diesem Remote-Repository:
 
 ```powershell
 git branch -M main
-git remote add origin URL-DEINES-REPOSITORYS
+git remote add origin https://github.com/repos?q=owner%3A%40me
 git push -u origin main
 ```
 

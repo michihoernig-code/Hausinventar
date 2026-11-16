@@ -8,20 +8,24 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='inventory_theme.css') }}">
 </head>
 
-<body class="{{ body_class or '' }}">
+<body class="{{ body_class or '' }} {{ device_class or '' }}">
     <div class="page-shell">
         <!-- Linke Navigation: bleibt auf allen Seiten gleich. -->
         <aside class="sidebar">
             <a class="brand" href="{{ url_for('index') }}">Hausinventar</a>
-            <nav class="nav-links">
-                <a href="{{ url_for('index') }}">Dashboard</a>
-                <a href="{{ url_for('scanner_page') }}">Scanner</a>
-                <a href="{{ url_for('products_page') }}">Produktverwaltung</a>
-                <a href="{{ url_for('new_product') }}">Produkt anlegen</a>
-                <a href="{{ url_for('shopping_list') }}">Einkaufsliste</a>
-                <a href="{{ url_for('expiry_page') }}">Haltbarkeitsdatum</a>
-                <a href="{{ url_for('categories') }}">Kategorien</a>
-            </nav>
+            <details class="mobile-nav" {% if not is_mobile_device %}open{% endif %}>
+                <summary>Navigation</summary>
+                <nav class="nav-links" aria-label="Hauptnavigation">
+                    <a href="{{ url_for('index') }}">Dashboard</a>
+                    <a href="{{ url_for('scanner_page') }}">Scanner</a>
+                    <a href="{{ url_for('products_page') }}">Produktverwaltung</a>
+                    <a href="{{ url_for('new_product') }}">Produkt anlegen</a>
+                    <a href="{{ url_for('shopping_list') }}">Einkaufsliste</a>
+                    <a href="{{ url_for('expiry_page') }}">Haltbarkeitsdatum</a>
+                    <a href="{{ url_for('alerts_page') }}">Meldungen</a>
+                    <a href="{{ url_for('categories') }}">Kategorien</a>
+                </nav>
+            </details>
             <div class="sidebar-bottom">
                 <p class="sidebar-note">Optimiert fuer Raspberry Pi 3, USB-Barcodescanner und lokale Nutzung im Browser.
                 </p>

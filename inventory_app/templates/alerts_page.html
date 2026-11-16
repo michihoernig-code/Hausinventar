@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="hero dashboard-hero-compact">
+    <div>
+        <p class="eyebrow">Meldungen</p>
+        <h1>Zentrale Hinweise fuer den Smart-Home-Hub.</h1>
+        <p class="lead">Lege fest, welche Inventar-Infos als Meldung im zentralen Dashboard erscheinen sollen.</p>
+    </div>
+</section>
+
+<section class="dashboard-overview-grid">
+    <article class="panel dashboard-focus-panel">
+        <div class="section-head compact-head dashboard-panel-head">
+            <div>
+                <h2>Meldungsquellen auswaehlen</h2>
+                <p class="subtle">Aktiviere oder deaktiviere einzelne Signale fuer den Hub.</p>
+            </div>
+        </div>
+
+        {% set signals = alert_payload.settings.signals %}
+        <form method="post" class="field-grid">
+            <label class="product-list-checkbox-row">
+                <input type="checkbox" name="low_stock_enabled" {% if signals.low_stock.enabled %}checked{% endif %}>
+                Artikel unter Mindestbestand
+            </label>
+            <label>
+                Ausloesen ab Anzahl >
+                <input type="number" name="low_stock_threshold" min="0" step="1"
+                    value="{{ signals.low_stock.threshold }}">
+            </label>
+
+            <label class="product-list-checkbox-row">
+                <input type="checkbox" name="expired_items_enabled" {% if signals.expired_items.enabled %}checked{%
+                    endif %}>
+                Abgelaufene Artikel
+            </label>
+            <label>
+                Ausloesen ab Anzahl >
+                <input type="number" name="expired_items_threshold" min="0" step="1"
+                    value="{{ signals.expired_items.threshold }}">
+            </label>
+
+            <label class="product-list-checkbox-row">
+                <input type="checkbox" name="expiring_soon_enabled" {% if signals.expiring_soon.enabled %}checked{%
+                    endif %}>
+                MHD bald faellig
+            </label>
+            <label>
+                Ausloesen ab Anzahl >
+                <input type="number" name="expiring_soon_threshold" min="0" step="1"
+                    value="{{ signals.expiring_soon.threshold }}">
+            </label>
+
+            <label class="product-list-checkbox-row">
+                <input type="checkbox" name="missing_expiry_enabled" {% if signals.missing_expiry.enabled %}checked{%
+                    endif %}>
+                MHD fehlt
+            </label>
+            <label>
+                Ausloesen ab Anzahl >
+                <input type="number" name="missing_expiry_threshold" min="0" step="1"
+                    value="{{ signals.missing_expiry.threshold }}">
+            </label>
+
+            <div class="detail-actions field-span">
+                <button type="submit">Einstellungen speichern</button>
+                <a class="button-link secondary" href="{{ url_for('index') }}">Zurueck zum Dashboard</a>
+            </div>
+        </form>
+    </article>
+
+    <article class="panel dashboard-focus-panel">
+        <div class="section-head compact-head dashboard-panel-head">
+            <div>
+                <h2>Aktive Meldungen</h2>
+                <p class="subtle">Diese Meldungen liefert Inventar aktuell an den Hub.</p>
+            </div>
+        </div>
+
+        <section class="stats-grid compact">
+            <article class="stat-card">
+                <span>Gesamt</span>
+                <strong>{{ alert_payload.summary.total }}</strong>
+            </article>
+            <article class="stat-card warning">
+                <span>Kritisch</span>
+                <strong>{{ alert_payload.summary.critical }}</strong>
+            </article>
+            <article class="stat-card">
+                <span>Warnung</span>
+                <strong>{{ alert_payload.summary.warning }}</strong>
+            </article>
+        </section>
+
+        {% if alert_payload.alerts %}
+        <ul class="detail-list">
+            {% for item in alert_payload.alerts %}
+            <li>
+                <strong>{{ item.title }}</strong><br>
+                {{ item.message }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="subtle">Aktuell keine aktiven Meldungen.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

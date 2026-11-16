@@ -75,14 +75,14 @@
             <form class="search-form shopping-filter-form" id="shopping-filter-form" method="get">
                 <div>
                     <label for="mode">Modus</label>
-                    <select id="mode" name="mode">
+                    <select id="mode" name="mode" onchange="this.form.requestSubmit()">
                         <option value="min" {% if list_mode=='min' %}selected{% endif %}>Mindestbestand</option>
                         <option value="target" {% if list_mode=='target' %}selected{% endif %}>Vollbestand</option>
                     </select>
                 </div>
                 <div>
                     <label for="category">Kategorie</label>
-                    <select id="category" name="category">
+                    <select id="category" name="category" onchange="this.form.requestSubmit()">
                         <option value="">Alle Einkaufskategorien</option>
                         {% for category_option in category_suggestions %}
                         <option value="{{ category_option }}" {% if selected_category==category_option %}selected{%
@@ -94,7 +94,6 @@
                     <label for="email">Mail</label>
                     <input id="email" name="email" type="email" placeholder="optional" value="{{ email_recipient }}">
                 </div>
-                <button type="submit">Aktualisieren</button>
             </form>
             <div class="form-actions">
                 <button type="submit" form="shopping-filter-form" formaction="{{ url_for('send_shopping_list') }}"

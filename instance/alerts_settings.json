@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "signals": {
+    "low_stock": {
+      "enabled": true,
+      "threshold": 0
+    },
+    "expired_items": {
+      "enabled": true,
+      "threshold": 0
+    },
+    "expiring_soon": {
+      "enabled": true,
+      "threshold": 0
+    },
+    "missing_expiry": {
+      "enabled": false,
+      "threshold": 0
+    }
+  }
+}

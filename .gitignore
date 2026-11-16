@@ -1,5 +1,21 @@
-__pycache__/
-*.pyc
+# Virtuelle Python-Umgebungen
 .venv/
-instance/
-inventory.db
+venv/
+env/
+
+# Python Cache & kompilierte Dateien
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Umgebungsvariablen & geheime Zugangsdaten (wichtig für Smart Home / API-Keys!)
+.env
+*.local
+
+# IDE & Editor-Ordner
+.vscode/
+.idea/
+
+# Windows Systemdateien
+Thumbs.db
+Desktop.ini
